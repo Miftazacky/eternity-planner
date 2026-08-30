@@ -1,9 +1,10 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, TrendingUp, AlertCircle, CreditCard, Plus, X, CheckCircle2, Calendar } from 'lucide-react';
+import { Wallet, TrendingUp, AlertCircle, CreditCard, Plus, X, Trash2, PieChart as PieIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function BudgetDashboard() {
   const [totalBudget, setTotalBudget] = useState(0);
@@ -14,6 +15,7 @@ export default function BudgetDashboard() {
   // Data State
   const [categories, setCategories] = useState<any[]>([]);
   const [expensesList, setExpensesList] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [upcomingDueDate, setUpcomingDueDate] = useState<any>(null);
   const [activeTerm, setActiveTerm] = useState<any>(null);
 
@@ -33,7 +35,7 @@ export default function BudgetDashboard() {
     // 2. Fetch Expenses dengan Join Kategori
     const { data: expData } = await supabase
       .from('expenses')
-      .select('*, budget_categories(name)')
+      .select('*, budget_categories(name, icon_color)')
       .order('created_at', { ascending: false });
 
     if (expData) {
@@ -52,6 +54,21 @@ export default function BudgetDashboard() {
       // Cari Termin Aktif (DP Paid / Pending)
       const active = expData.find((exp) => exp.status === 'DP Paid' || exp.status === 'Pending');
       setActiveTerm(active || null);
+
+      // Agregasi Data untuk Grafik Pie (Berdasarkan Pengeluaran Per Kategori)
+      if (catData) {
+        const aggregated = catData.map((cat) => {
+          const categorySpent = expData
+            .filter((exp) => exp.category_id === cat.id)
+            .reduce((sum, exp) => sum + Number(exp.paid_amount), 0);
+          return {
+            name: cat.name,
+            value: categorySpent > 0 ? categorySpent : Number(cat.allocated_amount),
+            color: cat.icon_color || '#e11d48',
+          };
+        });
+        setChartData(aggregated);
+      }
     }
 
     setTotalBudget(budget);
@@ -92,6 +109,16 @@ export default function BudgetDashboard() {
       fetchFinancialData();
     } else {
       alert('Gagal menyimpan tagihan vendor.');
+    }
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    if (!confirm('Apakah kamu yakin ingin menghapus tagihan vendor ini?')) return;
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (!error) {
+      fetchFinancialData();
+    } else {
+      alert('Gagal menghapus data.');
     }
   };
 
@@ -182,9 +209,42 @@ export default function BudgetDashboard() {
         />
       </div>
 
-      {/* Tabel Detail Vendor */}
-      <div className="max-w-6xl mx-auto px-8 mt-12">
-        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+      {/* Grid Grafik & Tabel Detail */}
+      <div className="max-w-6xl mx-auto px-8 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Widget Donut Chart */}
+        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="text-xl font-serif italic text-rose-900 mb-2 flex items-center gap-2">
+              <PieIcon size={20} /> Proporsi Anggaran
+            </h3>
+            <p className="text-xs text-gray-400">Visualisasi pembagian pagu dana per kategori.</p>
+          </div>
+          <div className="h-56 w-full my-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Tabel Detail Vendor */}
+        <div className="lg:col-span-2 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
           <h3 className="text-xl font-serif italic text-rose-900 mb-6">Rincian Pengeluaran Vendor</h3>
           
           {expensesList.length === 0 ? (
@@ -199,6 +259,7 @@ export default function BudgetDashboard() {
                     <th className="pb-4 font-medium">Total Biaya</th>
                     <th className="pb-4 font-medium">Terbayar</th>
                     <th className="pb-4 font-medium">Status</th>
+                    <th className="pb-4 font-medium text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 text-sm">
@@ -216,6 +277,14 @@ export default function BudgetDashboard() {
                         }`}>
                           {item.status}
                         </span>
+                      </td>
+                      <td className="py-4 text-right">
+                        <button 
+                          onClick={() => handleDeleteExpense(item.id)}
+                          className="text-gray-400 hover:text-rose-600 transition"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
