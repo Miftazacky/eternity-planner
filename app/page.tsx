@@ -1,77 +1,103 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { Wallet, TrendingUp, AlertCircle, CreditCard } from 'lucide-react';
 
-export default function WeddingDashboard() {
-  // Ganti tanggal ini dengan tanggal pernikahanmu (Format: YYYY-MM-DDTHH:mm:ss)
-  const weddingDate = new Date('2028-02-19T08:00:00').getTime();
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0 });
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = weddingDate - now;
-      
-      if (distance > 0) {
-        setTimeLeft({
-          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        });
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [weddingDate]);
-
-  if (!isMounted) return null; // Mencegah error hydration di Next.js
+export default function BudgetDashboard() {
+  // Data statis sementara untuk preview UI
+  const totalBudget = 250000000;
+  const totalSpent = 115000000;
+  const percentage = (totalSpent / totalBudget) * 100;
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#2C3E50] font-sans selection:bg-rose-200">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#2C3E50] font-sans pb-20">
+      {/* Header Section */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="max-w-5xl mx-auto pt-24 px-8"
+        className="max-w-6xl mx-auto pt-16 px-8"
       >
-        <p className="text-sm uppercase tracking-widest text-rose-400 mb-4">Command Center</p>
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight mb-8">
-          The Journey to <br/> <span className="font-serif italic text-rose-900">Forever</span>.
+        <p className="text-sm uppercase tracking-widest text-rose-400 mb-2 font-semibold">Financial Command Center</p>
+        <h1 className="text-4xl md:text-5xl font-light tracking-tight mb-10">
+          Wedding <span className="font-serif italic text-rose-900">Ledger</span>.
         </h1>
 
-        <div className="backdrop-blur-xl bg-white/40 border border-white/60 shadow-xl shadow-rose-100/50 rounded-3xl p-8 flex gap-8 max-w-fit">
-          <div className="text-center">
-            <span className="block text-4xl font-light">{timeLeft.days}</span>
-            <span className="text-xs uppercase tracking-wider text-gray-500">Days</span>
+        {/* Master Card - Glassmorphism */}
+        <div className="backdrop-blur-xl bg-white/60 border border-white/80 shadow-2xl shadow-rose-100/40 rounded-[2rem] p-8 md:p-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-200/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+            <div>
+              <p className="text-gray-500 mb-2 flex items-center gap-2">
+                <Wallet size={18} /> Total Anggaran
+              </p>
+              <p className="text-4xl font-semibold">
+                Rp {totalBudget.toLocaleString('id-ID')}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500 mb-2 flex items-center gap-2">
+                <TrendingUp size={18} className="text-rose-500"/> Dana Terpakai (Aktual)
+              </p>
+              <p className="text-4xl font-semibold text-rose-900">
+                Rp {totalSpent.toLocaleString('id-ID')}
+              </p>
+            </div>
           </div>
-          <div className="text-center">
-            <span className="block text-4xl font-light">{timeLeft.hours}</span>
-            <span className="text-xs uppercase tracking-wider text-gray-500">Hours</span>
-          </div>
-          <div className="text-center">
-            <span className="block text-4xl font-light">{timeLeft.mins}</span>
-            <span className="text-xs uppercase tracking-wider text-gray-500">Mins</span>
+
+          {/* Progress Bar */}
+          <div className="mt-8">
+            <div className="flex justify-between text-sm mb-2 font-medium">
+              <span>Terserap: {percentage.toFixed(1)}%</span>
+              <span className="text-gray-500">Sisa: Rp {(totalBudget - totalSpent).toLocaleString('id-ID')}</span>
+            </div>
+            <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${percentage}%` }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+                className="h-full bg-gradient-to-r from-rose-300 to-rose-500 rounded-full"
+              />
+            </div>
           </div>
         </div>
       </motion.div>
 
-      <div className="max-w-5xl mx-auto px-8 mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Guest RSVP" value="0 / 300" subtitle="Pending Integration" />
-        <StatCard title="Budget Used" value="0%" subtitle="IDR 0 / Target" />
-        <StatCard title="Pending Tasks" value="Vendor" subtitle="Catering & MUA" />
+      {/* Grid Status Vendor */}
+      <div className="max-w-6xl mx-auto px-8 mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <StatusCard 
+          title="Jatuh Tempo Terdekat" 
+          vendor="Katering Nusantara" 
+          amount="Rp 35.000.000" 
+          date="15 Sep 2026" 
+          icon={<AlertCircle className="text-amber-500" />} 
+        />
+        <StatusCard 
+          title="Termin Aktif (Belum Lunas)" 
+          vendor="Fotografi & Videografi" 
+          amount="Sisa: Rp 8.000.000" 
+          date="DP Sudah Dibayar" 
+          icon={<CreditCard className="text-blue-500" />} 
+        />
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, subtitle }: { title: string, value: string, subtitle: string }) {
+function StatusCard({ title, vendor, amount, date, icon }: any) {
   return (
-    <motion.div whileHover={{ y: -5 }} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">{title}</h3>
-      <p className="text-2xl font-semibold text-gray-800">{value}</p>
-      <p className="text-xs text-rose-400 mt-2">{subtitle}</p>
+    <motion.div whileHover={{ y: -4 }} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4">
+      <div className="p-3 bg-gray-50 rounded-xl">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-400 mb-1">{title}</p>
+        <p className="text-lg font-semibold text-gray-800">{vendor}</p>
+        <div className="flex gap-4 mt-2 text-sm">
+          <span className="text-rose-600 font-medium">{amount}</span>
+          <span className="text-gray-400">{date}</span>
+        </div>
+      </div>
     </motion.div>
   );
 }
