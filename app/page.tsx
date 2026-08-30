@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, TrendingUp, AlertCircle, CreditCard, Plus, X } from 'lucide-react';
+import { Wallet, TrendingUp, AlertCircle, CreditCard, Plus, X, CheckCircle2, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -11,8 +11,13 @@ export default function BudgetDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Form State
+  // Data State
   const [categories, setCategories] = useState<any[]>([]);
+  const [expensesList, setExpensesList] = useState<any[]>([]);
+  const [upcomingDueDate, setUpcomingDueDate] = useState<any>(null);
+  const [activeTerm, setActiveTerm] = useState<any>(null);
+
+  // Form State
   const [selectedCategory, setSelectedCategory] = useState('');
   const [vendorName, setVendorName] = useState('');
   const [totalCost, setTotalCost] = useState('');
@@ -20,18 +25,36 @@ export default function BudgetDashboard() {
   const [dueDate, setDueDate] = useState('');
 
   const fetchFinancialData = async () => {
-    // Fetch Kategori
+    // 1. Fetch Kategori
     const { data: catData } = await supabase.from('budget_categories').select('*');
     if (catData) setCategories(catData);
-    
     const budget = catData?.reduce((sum, cat) => sum + Number(cat.allocated_amount), 0) || 0;
 
-    // Fetch Expenses
-    const { data: expenses } = await supabase.from('expenses').select('paid_amount');
-    const spent = expenses?.reduce((sum, exp) => sum + Number(exp.paid_amount), 0) || 0;
+    // 2. Fetch Expenses dengan Join Kategori
+    const { data: expData } = await supabase
+      .from('expenses')
+      .select('*, budget_categories(name)')
+      .order('created_at', { ascending: false });
+
+    if (expData) {
+      setExpensesList(expData);
+
+      // Hitung Total Pengeluaran Aktual
+      const spent = expData.reduce((sum, exp) => sum + Number(exp.paid_amount), 0);
+      setTotalSpent(spent);
+
+      // Cari Vendor Jatuh Tempo Terdekat yang belum lunas
+      const upcoming = expData
+        .filter((exp) => exp.status !== 'Paid Off' && exp.due_date)
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+      setUpcomingDueDate(upcoming || null);
+
+      // Cari Termin Aktif (DP Paid / Pending)
+      const active = expData.find((exp) => exp.status === 'DP Paid' || exp.status === 'Pending');
+      setActiveTerm(active || null);
+    }
 
     setTotalBudget(budget);
-    setTotalSpent(spent);
     setIsLoading(false);
   };
 
@@ -66,7 +89,7 @@ export default function BudgetDashboard() {
       setTotalCost('');
       setPaidAmount('');
       setDueDate('');
-      fetchFinancialData(); // Refresh data real-time
+      fetchFinancialData();
     } else {
       alert('Gagal menyimpan tagihan vendor.');
     }
@@ -141,10 +164,66 @@ export default function BudgetDashboard() {
         </div>
       </motion.div>
 
-      {/* Grid Status Vendor */}
+      {/* Grid Status Vendor Dinamis */}
       <div className="max-w-6xl mx-auto px-8 mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <StatusCard title="Jatuh Tempo Terdekat" vendor="Belum ada data vendor" amount="Rp 0" date="-" icon={<AlertCircle className="text-amber-500" />} />
-        <StatusCard title="Termin Aktif" vendor="Belum ada tagihan" amount="Rp 0" date="-" icon={<CreditCard className="text-blue-500" />} />
+        <StatusCard 
+          title="Jatuh Tempo Terdekat" 
+          vendor={upcomingDueDate ? upcomingDueDate.vendor_name : "Belum ada tagihan terdekat"} 
+          amount={upcomingDueDate ? `Sisa: Rp ${(Number(upcomingDueDate.total_cost) - Number(upcomingDueDate.paid_amount)).toLocaleString('id-ID')}` : "Rp 0"} 
+          date={upcomingDueDate?.due_date ? new Date(upcomingDueDate.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : "-"} 
+          icon={<AlertCircle className="text-amber-500" />} 
+        />
+        <StatusCard 
+          title="Termin Aktif" 
+          vendor={activeTerm ? activeTerm.vendor_name : "Tidak ada termin aktif"} 
+          amount={activeTerm ? `Terbayar: Rp ${Number(activeTerm.paid_amount).toLocaleString('id-ID')}` : "Rp 0"} 
+          date={activeTerm ? `Status: ${activeTerm.status}` : "-"} 
+          icon={<CreditCard className="text-blue-500" />} 
+        />
+      </div>
+
+      {/* Tabel Detail Vendor */}
+      <div className="max-w-6xl mx-auto px-8 mt-12">
+        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+          <h3 className="text-xl font-serif italic text-rose-900 mb-6">Rincian Pengeluaran Vendor</h3>
+          
+          {expensesList.length === 0 ? (
+            <p className="text-gray-400 text-sm py-4">Belum ada vendor yang ditambahkan.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400">
+                    <th className="pb-4 font-medium">Vendor</th>
+                    <th className="pb-4 font-medium">Kategori</th>
+                    <th className="pb-4 font-medium">Total Biaya</th>
+                    <th className="pb-4 font-medium">Terbayar</th>
+                    <th className="pb-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-sm">
+                  {expensesList.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition">
+                      <td className="py-4 font-semibold text-gray-800">{item.vendor_name}</td>
+                      <td className="py-4 text-gray-500">{item.budget_categories?.name || '-'}</td>
+                      <td className="py-4 font-medium">Rp {Number(item.total_cost).toLocaleString('id-ID')}</td>
+                      <td className="py-4 text-rose-900 font-medium">Rp {Number(item.paid_amount).toLocaleString('id-ID')}</td>
+                      <td className="py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          item.status === 'Paid Off' ? 'bg-emerald-100 text-emerald-800' :
+                          item.status === 'DP Paid' ? 'bg-blue-100 text-blue-800' :
+                          'bg-amber-100 text-amber-800'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal Form Input Vendor */}
@@ -172,7 +251,7 @@ export default function BudgetDashboard() {
                   <select 
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-rose-400 text-sm"
+                    className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-rose-400 text-sm bg-transparent"
                     required
                   >
                     <option value="">Pilih Kategori...</option>
@@ -230,7 +309,7 @@ export default function BudgetDashboard() {
 
                 <button 
                   type="submit"
-                  className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition pt-3 mt-4"
+                  className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-4"
                 >
                   Simpan Vendor
                 </button>
