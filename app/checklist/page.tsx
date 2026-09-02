@@ -94,21 +94,20 @@ export default function ChecklistPage() {
     fetchChecklists();
   };
 
-  // Fungsi untuk menentukan warna background kartu berdasarkan Kategori
+  // Desain Baru: Menambahkan border-l-[6px] untuk penanda kiri yang gelap
   const getCategoryColor = (cat: string, isCompleted: boolean) => {
-    if (isCompleted) return 'bg-gray-100 border-gray-200 text-gray-500'; // Warna abu-abu jika selesai
+    if (isCompleted) return 'bg-gray-50 border-gray-200 border-l-gray-400 text-gray-500';
     
     switch (cat) {
-      case 'Persiapan Awal': return 'bg-blue-50 border-blue-200 text-blue-900';
-      case 'Vendor': return 'bg-orange-50 border-orange-200 text-orange-900';
-      case 'Administrasi & Dokumen': return 'bg-purple-50 border-purple-200 text-purple-900';
-      case 'Tamu & Undangan': return 'bg-emerald-50 border-emerald-200 text-emerald-900';
-      case 'Lain-lain': return 'bg-amber-50 border-amber-200 text-amber-900';
-      default: return 'bg-rose-50 border-rose-200 text-rose-900';
+      case 'Persiapan Awal': return 'bg-blue-50 border-blue-100 border-l-blue-500 text-blue-900';
+      case 'Vendor': return 'bg-orange-50 border-orange-100 border-l-orange-500 text-orange-900';
+      case 'Administrasi & Dokumen': return 'bg-purple-50 border-purple-100 border-l-purple-500 text-purple-900';
+      case 'Tamu & Undangan': return 'bg-emerald-50 border-emerald-100 border-l-emerald-500 text-emerald-900';
+      case 'Lain-lain': return 'bg-amber-50 border-amber-100 border-l-amber-500 text-amber-900';
+      default: return 'bg-rose-50 border-rose-100 border-l-rose-500 text-rose-900';
     }
   };
 
-  // Fungsi untuk menentukan warna badge kecil di dalam kartu
   const getBadgeColor = (cat: string, isCompleted: boolean) => {
     if (isCompleted) return 'bg-gray-200 text-gray-500 border-gray-300';
     
@@ -163,7 +162,7 @@ export default function ChecklistPage() {
         </div>
       </div>
 
-      {/* Daftar Checklist (Desain Baru) */}
+      {/* Daftar Checklist */}
       <div className="space-y-4">
         <AnimatePresence>
           {checklists.length === 0 ? (
@@ -173,7 +172,7 @@ export default function ChecklistPage() {
               <motion.div 
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                className={`p-6 rounded-[2rem] border transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm ${getCategoryColor(item.category, item.is_completed)}`}
+                className={`p-6 rounded-2xl border border-l-[6px] transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm ${getCategoryColor(item.category, item.is_completed)}`}
               >
                 {/* Bagian Kiri: Info Tugas */}
                 <div className="flex-1">
@@ -190,11 +189,11 @@ export default function ChecklistPage() {
                   </p>
                 </div>
 
-                {/* Bagian Kanan: Aksi (Tandai Selesai, Edit, Hapus) disusun secara vertikal */}
-                <div className="flex flex-col gap-2 min-w-[140px] items-end w-full md:w-auto">
+                {/* Bagian Kanan: Aksi (Tandai Selesai, Edit, Hapus) - Semua Berbentuk Pil Vertikal */}
+                <div className="flex flex-col gap-1 min-w-[140px] items-stretch w-full md:w-auto">
                   <button 
                     onClick={() => toggleCompletion(item.id, item.is_completed)}
-                    className={`w-full md:w-auto px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                    className={`w-full px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
                       item.is_completed 
                         ? 'bg-gray-300 text-gray-700 hover:bg-gray-400' 
                         : 'bg-rose-900 text-white hover:bg-rose-950 shadow-md'
@@ -204,13 +203,13 @@ export default function ChecklistPage() {
                   </button>
                   <button 
                     onClick={() => handleEditClick(item)}
-                    className="text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity mt-1 mr-2"
+                    className="w-full px-5 py-2 rounded-full text-sm font-semibold opacity-70 hover:opacity-100 hover:bg-black/5 transition-all text-center"
                   >
                     Edit
                   </button>
                   <button 
                     onClick={() => handleDelete(item.id)}
-                    className="text-xs font-semibold opacity-60 hover:text-red-600 hover:opacity-100 transition-colors mr-2"
+                    className="w-full px-5 py-2 rounded-full text-sm font-semibold text-rose-600 opacity-70 hover:opacity-100 hover:bg-rose-100 transition-all text-center"
                   >
                     Hapus
                   </button>
