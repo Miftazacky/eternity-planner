@@ -94,7 +94,6 @@ export default function ChecklistPage() {
     fetchChecklists();
   };
 
-  // Desain Baru: Menambahkan border-l-[6px] untuk penanda kiri yang gelap
   const getCategoryColor = (cat: string, isCompleted: boolean) => {
     if (isCompleted) return 'bg-gray-50 border-gray-200 border-l-gray-400 text-gray-500';
     
@@ -189,8 +188,8 @@ export default function ChecklistPage() {
                   </p>
                 </div>
 
-                {/* Bagian Kanan: Aksi (Tandai Selesai, Edit, Hapus) - Semua Berbentuk Pil Vertikal */}
-                <div className="flex flex-col gap-1 min-w-[140px] items-stretch w-full md:w-auto">
+                {/* Bagian Kanan: Aksi (Tandai Selesai, Edit, Hapus) */}
+                <div className="flex flex-col gap-2 min-w-[140px] items-stretch w-full md:w-auto">
                   <button 
                     onClick={() => toggleCompletion(item.id, item.is_completed)}
                     className={`w-full px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
@@ -203,13 +202,13 @@ export default function ChecklistPage() {
                   </button>
                   <button 
                     onClick={() => handleEditClick(item)}
-                    className="w-full px-5 py-2 rounded-full text-sm font-semibold opacity-70 hover:opacity-100 hover:bg-black/5 transition-all text-center"
+                    className="w-full px-5 py-2 rounded-full text-sm font-semibold bg-white text-gray-700 hover:bg-gray-50 shadow-sm transition-all text-center"
                   >
                     Edit
                   </button>
                   <button 
                     onClick={() => handleDelete(item.id)}
-                    className="w-full px-5 py-2 rounded-full text-sm font-semibold text-rose-600 opacity-70 hover:opacity-100 hover:bg-rose-100 transition-all text-center"
+                    className="w-full px-5 py-2 rounded-full text-sm font-semibold bg-white text-rose-600 hover:bg-rose-50 shadow-sm transition-all text-center"
                   >
                     Hapus
                   </button>
