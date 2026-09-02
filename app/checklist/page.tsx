@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Trash2, CheckCircle2, Circle, Calendar, ListTodo } from 'lucide-react';
+import { Plus, X, Trash2, CheckCircle2, Circle, Calendar, ListTodo, Edit2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -9,6 +9,7 @@ export default function ChecklistPage() {
   const [checklists, setChecklists] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -19,7 +20,7 @@ export default function ChecklistPage() {
     const { data } = await supabase
       .from('checklists')
       .select('*')
-      .order('is_completed', { ascending: true }) // Yang belum selesai di atas
+      .order('is_completed', { ascending: true })
       .order('created_at', { ascending: false });
     
     if (data) setChecklists(data);
@@ -30,35 +31,63 @@ export default function ChecklistPage() {
     fetchChecklists();
   }, []);
 
-  const handleAddChecklist = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setTitle('');
+    setCategory('Persiapan Awal');
+    setDueDate('');
+    setEditingId(null);
+    setIsModalOpen(false);
+  };
+
+  const handleEditClick = (item: any) => {
+    setTitle(item.title);
+    setCategory(item.category || 'Persiapan Awal');
+    setDueDate(item.due_date || '');
+    setEditingId(item.id);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
 
-    const { error } = await supabase.from('checklists').insert([{
-      title,
-      category,
-      due_date: dueDate || null,
-      is_completed: false
-    }]);
+    if (editingId) {
+      // Mode Edit (Update Data)
+      const { error } = await supabase
+        .from('checklists')
+        .update({ title, category, due_date: dueDate || null })
+        .eq('id', editingId);
 
-    if (!error) {
-      setIsModalOpen(false);
-      setTitle('');
-      setCategory('Persiapan Awal');
-      setDueDate('');
-      fetchChecklists();
+      if (!error) {
+        resetForm();
+        fetchChecklists();
+      } else {
+        alert('Gagal memperbarui tugas.');
+      }
+    } else {
+      // Mode Tambah Baru (Insert Data)
+      const { error } = await supabase.from('checklists').insert([{
+        title,
+        category,
+        due_date: dueDate || null,
+        is_completed: false
+      }]);
+
+      if (!error) {
+        resetForm();
+        fetchChecklists();
+      } else {
+        alert('Gagal menyimpan tugas.');
+      }
     }
   };
 
   const toggleCompletion = async (id: string, currentStatus: boolean) => {
-    // Optimistic UI update (biar terasa cepat/instan saat diklik)
     setChecklists(checklists.map(item => 
       item.id === id ? { ...item, is_completed: !currentStatus } : item
     ));
-
-    // Update ke database
     await supabase.from('checklists').update({ is_completed: !currentStatus }).eq('id', id);
-    fetchChecklists(); // Refresh untuk mengurutkan ulang
+    fetchChecklists();
   };
 
   const handleDelete = async (id: string) => {
@@ -67,7 +96,6 @@ export default function ChecklistPage() {
     fetchChecklists();
   };
 
-  // Kalkulasi Progres
   const totalTasks = checklists.length;
   const completedTasks = checklists.filter(c => c.is_completed).length;
   const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -85,7 +113,7 @@ export default function ChecklistPage() {
           <p className="text-gray-500 text-sm">Kelola daftar tugas persiapan pernikahanmu dengan rapi.</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { resetForm(); setIsModalOpen(true); }}
           className="bg-[#2C3E50] hover:bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium transition shadow-lg"
         >
           <Plus size={18} /> Tambah Tugas
@@ -123,48 +151,67 @@ export default function ChecklistPage() {
                   item.is_completed ? 'border-gray-100 bg-gray-50/50' : 'border-gray-200 shadow-sm hover:shadow-md'
                 }`}
               >
-                <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => toggleCompletion(item.id, item.is_completed)}>
-                  {/* Tombol Checklist Interaktif */}
-                  <motion.div whileTap={{ scale: 0.8 }}>
-                    {item.is_completed ? (
-                      <CheckCircle2 size={26} className="text-emerald-500" />
-                    ) : (
-                      <Circle size={26} className="text-gray-300 hover:text-rose-400 transition-colors" />
-                    )}
-                  </motion.div>
-                  
-                  {/* Info Tugas */}
-                  <div>
-                    <h3 className={`font-semibold text-lg transition-colors ${item.is_completed ? 'text-gray-400 line-through' : 'text-[#2C3E50]'}`}>
-                      {item.title}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${item.is_completed ? 'bg-gray-200 text-gray-500' : 'bg-rose-100 text-rose-800'}`}>
-                        {item.category}
+                {/* Bagian Kiri: Info Tugas */}
+                <div className="flex-1 pr-4">
+                  <h3 className={`font-semibold text-lg transition-colors ${item.is_completed ? 'text-gray-400 line-through' : 'text-[#2C3E50]'}`}>
+                    {item.title}
+                  </h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${item.is_completed ? 'bg-gray-200 text-gray-500' : 'bg-rose-100 text-rose-800'}`}>
+                      {item.category}
+                    </span>
+                    {item.due_date && (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <Calendar size={12} /> {new Date(item.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
-                      {item.due_date && (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <Calendar size={12} /> {new Date(item.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Tombol Hapus */}
-                <button 
-                  onClick={() => handleDelete(item.id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-rose-600 transition-all p-2"
-                >
-                  <Trash2 size={18} />
-                </button>
+                {/* Bagian Kanan: Aksi (Edit, Hapus, Centang) */}
+                <div className="flex items-center gap-2 md:gap-4">
+                  {/* Ikon Edit & Hapus (Muncul saat area di-hover) */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleEditClick(item)}
+                      className="text-gray-300 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-blue-50"
+                      title="Edit Tugas"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(item.id)}
+                      className="text-gray-300 hover:text-rose-600 transition-colors p-2 rounded-lg hover:bg-rose-50"
+                      title="Hapus Tugas"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                  
+                  {/* Garis Pemisah (Opsional, agar terlihat rapi) */}
+                  <div className="w-px h-8 bg-gray-100 hidden md:block mx-1"></div>
+
+                  {/* Tombol Check (Selalu Terlihat) */}
+                  <button 
+                    onClick={() => toggleCompletion(item.id, item.is_completed)}
+                    className="p-1 focus:outline-none"
+                  >
+                    <motion.div whileTap={{ scale: 0.8 }}>
+                      {item.is_completed ? (
+                        <CheckCircle2 size={30} className="text-emerald-500" />
+                      ) : (
+                        <Circle size={30} className="text-gray-300 hover:text-emerald-400 transition-colors" />
+                      )}
+                    </motion.div>
+                  </button>
+                </div>
               </motion.div>
             ))
           )}
         </AnimatePresence>
       </div>
 
-      {/* Modal Tambah Tugas */}
+      {/* Modal Tambah/Edit Tugas */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -172,10 +219,12 @@ export default function ChecklistPage() {
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative"
             >
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
-              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">Tugas Baru</h2>
+              <button onClick={resetForm} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">
+                {editingId ? 'Edit Tugas' : 'Tugas Baru'}
+              </h2>
               
-              <form onSubmit={handleAddChecklist} className="space-y-4">
+              <form onSubmit={handleSaveChecklist} className="space-y-4">
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Tugas *</label>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Booking MUA" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
@@ -195,7 +244,7 @@ export default function ChecklistPage() {
                   <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 text-sm text-gray-600 focus:outline-rose-400" />
                 </div>
                 <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">
-                  Simpan Tugas
+                  {editingId ? 'Simpan Perubahan' : 'Simpan Tugas'}
                 </button>
               </form>
             </motion.div>

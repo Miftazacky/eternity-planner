@@ -44,7 +44,7 @@ export default function DashboardHome() {
           Nikahnya 2027, nyiapinnya dari sekarang
         </p>
         <h1 className="text-3xl font-bold text-[#2C3E50] mb-2">
-          Elsa Anindita & Raphael Mahesa
+          Kemprut Lucknut & Tata Ganteng
         </h1>
         <div className="flex items-center gap-2 text-gray-500 text-sm">
           <Calendar size={16} />
