@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Trash2, CheckCircle2, Circle, Calendar, ListTodo, Edit2 } from 'lucide-react';
+import { Plus, X, ListTodo } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -52,7 +52,6 @@ export default function ChecklistPage() {
     if (!title) return;
 
     if (editingId) {
-      // Mode Edit (Update Data)
       const { error } = await supabase
         .from('checklists')
         .update({ title, category, due_date: dueDate || null })
@@ -65,7 +64,6 @@ export default function ChecklistPage() {
         alert('Gagal memperbarui tugas.');
       }
     } else {
-      // Mode Tambah Baru (Insert Data)
       const { error } = await supabase.from('checklists').insert([{
         title,
         category,
@@ -94,6 +92,34 @@ export default function ChecklistPage() {
     if (!confirm('Hapus tugas ini?')) return;
     await supabase.from('checklists').delete().eq('id', id);
     fetchChecklists();
+  };
+
+  // Fungsi untuk menentukan warna background kartu berdasarkan Kategori
+  const getCategoryColor = (cat: string, isCompleted: boolean) => {
+    if (isCompleted) return 'bg-gray-100 border-gray-200 text-gray-500'; // Warna abu-abu jika selesai
+    
+    switch (cat) {
+      case 'Persiapan Awal': return 'bg-blue-50 border-blue-200 text-blue-900';
+      case 'Vendor': return 'bg-orange-50 border-orange-200 text-orange-900';
+      case 'Administrasi & Dokumen': return 'bg-purple-50 border-purple-200 text-purple-900';
+      case 'Tamu & Undangan': return 'bg-emerald-50 border-emerald-200 text-emerald-900';
+      case 'Lain-lain': return 'bg-amber-50 border-amber-200 text-amber-900';
+      default: return 'bg-rose-50 border-rose-200 text-rose-900';
+    }
+  };
+
+  // Fungsi untuk menentukan warna badge kecil di dalam kartu
+  const getBadgeColor = (cat: string, isCompleted: boolean) => {
+    if (isCompleted) return 'bg-gray-200 text-gray-500 border-gray-300';
+    
+    switch (cat) {
+      case 'Persiapan Awal': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Vendor': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'Administrasi & Dokumen': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'Tamu & Undangan': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'Lain-lain': return 'bg-amber-100 text-amber-800 border-amber-200';
+      default: return 'bg-rose-100 text-rose-800 border-rose-200';
+    }
   };
 
   const totalTasks = checklists.length;
@@ -137,8 +163,8 @@ export default function ChecklistPage() {
         </div>
       </div>
 
-      {/* Daftar Checklist */}
-      <div className="space-y-3">
+      {/* Daftar Checklist (Desain Baru) */}
+      <div className="space-y-4">
         <AnimatePresence>
           {checklists.length === 0 ? (
             <p className="text-center text-gray-400 py-10">Belum ada daftar tugas. Klik "Tambah Tugas" untuk memulai.</p>
@@ -147,62 +173,46 @@ export default function ChecklistPage() {
               <motion.div 
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                className={`bg-white p-5 rounded-2xl border transition-all flex items-center justify-between group ${
-                  item.is_completed ? 'border-gray-100 bg-gray-50/50' : 'border-gray-200 shadow-sm hover:shadow-md'
-                }`}
+                className={`p-6 rounded-[2rem] border transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm ${getCategoryColor(item.category, item.is_completed)}`}
               >
                 {/* Bagian Kiri: Info Tugas */}
-                <div className="flex-1 pr-4">
-                  <h3 className={`font-semibold text-lg transition-colors ${item.is_completed ? 'text-gray-400 line-through' : 'text-[#2C3E50]'}`}>
-                    {item.title}
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${item.is_completed ? 'bg-gray-200 text-gray-500' : 'bg-rose-100 text-rose-800'}`}>
+                <div className="flex-1">
+                  <div className="flex gap-2 mb-3">
+                    <span className={`text-xs px-3 py-1 rounded-full font-semibold border ${getBadgeColor(item.category, item.is_completed)}`}>
                       {item.category}
                     </span>
-                    {item.due_date && (
-                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <Calendar size={12} /> {new Date(item.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </span>
-                    )}
                   </div>
+                  <h3 className={`font-bold text-xl mb-1 ${item.is_completed ? 'line-through opacity-70' : ''}`}>
+                    {item.title}
+                  </h3>
+                  <p className="text-sm opacity-80 font-medium">
+                    Deadline: {item.due_date ? new Date(item.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                  </p>
                 </div>
 
-                {/* Bagian Kanan: Aksi (Edit, Hapus, Centang) */}
-                <div className="flex items-center gap-2 md:gap-4">
-                  {/* Ikon Edit & Hapus (Muncul saat area di-hover) */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => handleEditClick(item)}
-                      className="text-gray-300 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-blue-50"
-                      title="Edit Tugas"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(item.id)}
-                      className="text-gray-300 hover:text-rose-600 transition-colors p-2 rounded-lg hover:bg-rose-50"
-                      title="Hapus Tugas"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                  
-                  {/* Garis Pemisah (Opsional, agar terlihat rapi) */}
-                  <div className="w-px h-8 bg-gray-100 hidden md:block mx-1"></div>
-
-                  {/* Tombol Check (Selalu Terlihat) */}
+                {/* Bagian Kanan: Aksi (Tandai Selesai, Edit, Hapus) disusun secara vertikal */}
+                <div className="flex flex-col gap-2 min-w-[140px] items-end w-full md:w-auto">
                   <button 
                     onClick={() => toggleCompletion(item.id, item.is_completed)}
-                    className="p-1 focus:outline-none"
+                    className={`w-full md:w-auto px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                      item.is_completed 
+                        ? 'bg-gray-300 text-gray-700 hover:bg-gray-400' 
+                        : 'bg-rose-900 text-white hover:bg-rose-950 shadow-md'
+                    }`}
                   >
-                    <motion.div whileTap={{ scale: 0.8 }}>
-                      {item.is_completed ? (
-                        <CheckCircle2 size={30} className="text-emerald-500" />
-                      ) : (
-                        <Circle size={30} className="text-gray-300 hover:text-emerald-400 transition-colors" />
-                      )}
-                    </motion.div>
+                    {item.is_completed ? 'Batalkan' : 'Tandai Selesai'}
+                  </button>
+                  <button 
+                    onClick={() => handleEditClick(item)}
+                    className="text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity mt-1 mr-2"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(item.id)}
+                    className="text-xs font-semibold opacity-60 hover:text-red-600 hover:opacity-100 transition-colors mr-2"
+                  >
+                    Hapus
                   </button>
                 </div>
               </motion.div>
