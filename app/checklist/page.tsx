@@ -11,14 +11,14 @@ export default function ChecklistPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [openCardCategories, setOpenCardCategories] = useState<string[]>([]);
-
-  // State untuk Kategori Kustom
   const [customCategory, setCustomCategory] = useState('');
 
-  // Form State
+  // Menarik kategori dinamis langsung dari data yang ada di database
+  const dynamicCategories = Array.from(new Set(checklists.map(c => c.category)));
+
   const [formData, setFormData] = useState({
     title: '',
-    category: 'KUA',
+    category: '', 
     due_date: '',
     vendor_link: '',
     tempat: ''
@@ -33,7 +33,6 @@ export default function ChecklistPage() {
     
     if (data) {
       setChecklists(data);
-      // Buka semua kartu kategori secara default
       const uniqueCategories = Array.from(new Set(data.map(item => item.category)));
       setOpenCardCategories(uniqueCategories);
     }
@@ -51,8 +50,10 @@ export default function ChecklistPage() {
   };
 
   const resetForm = () => {
-    setFormData({ title: '', category: 'KUA', due_date: '', vendor_link: '', tempat: '' });
-    setCustomCategory(''); // Reset input kustom
+    // Default form ke kategori pertama yang ada, atau langsung 'custom' jika kosong
+    const firstCat = dynamicCategories.length > 0 ? dynamicCategories[0] : 'custom';
+    setFormData({ title: '', category: firstCat as string, due_date: '', vendor_link: '', tempat: '' });
+    setCustomCategory('');
     setEditingId(null);
     setIsModalOpen(false);
   };
@@ -60,7 +61,7 @@ export default function ChecklistPage() {
   const handleEditClick = (item: any) => {
     setFormData({
       title: item.title,
-      category: item.category || 'KUA',
+      category: item.category,
       due_date: item.due_date || '',
       vendor_link: item.vendor_link || '',
       tempat: item.tempat || ''
@@ -71,7 +72,6 @@ export default function ChecklistPage() {
 
   const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Jika user mengganti kategori selain "custom", bersihkan field custom
     if (e.target.name === 'category' && e.target.value !== 'custom') {
       setCustomCategory('');
     }
@@ -81,7 +81,6 @@ export default function ChecklistPage() {
     e.preventDefault();
     if (!formData.title) return;
 
-    // Menentukan kategori mana yang disimpan (Bawaan atau Kustom)
     const finalCategory = formData.category === 'custom' ? customCategory : formData.category;
 
     if (!finalCategory) {
@@ -118,16 +117,18 @@ export default function ChecklistPage() {
     fetchChecklists();
   };
 
-  // Grouping Data berdasarkan Kategori
+  // FUNGSI BARU: Hapus Seluruh Kategori beserta isinya
+  const handleDeleteCategory = async (categoryName: string) => {
+    if (!confirm(`PERINGATAN: Hapus kategori "${categoryName}" beserta SELURUH TUGAS di dalamnya?`)) return;
+    await supabase.from('checklists').delete().eq('category', categoryName);
+    fetchChecklists();
+  };
+
   const groupedChecklists = checklists.reduce((acc, item) => {
     if (!acc[item.category]) acc[item.category] = [];
     acc[item.category].push(item);
     return acc;
   }, {});
-
-  // Menggabungkan Kategori Default dengan Kategori yang ada di Database
-  const defaultCategories = ['KUA', 'MUA', 'Mahar dan Seserahan', 'Venue/lokasi', 'Dokumentasi', 'Pengisi Acara', 'Makanan', 'Undangan & Souvenir', 'Lain-lain'];
-  const dynamicCategories = Array.from(new Set([...defaultCategories, ...checklists.map(c => c.category)]));
 
   const getCategoryTheme = (index: number) => {
     const themes = [
@@ -149,7 +150,7 @@ export default function ChecklistPage() {
   return (
     <div className="pb-20 max-w-5xl mx-auto">
       
-      {/* Banner Header Berwarna (Seragam dengan Dasbor & Budget) */}
+      {/* Banner Header Berwarna */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
@@ -204,7 +205,7 @@ export default function ChecklistPage() {
               return (
                 <motion.div key={categoryName} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`bg-white rounded-[2rem] border transition-all shadow-sm overflow-hidden ${isAllDone ? 'border-emerald-300 ring-2 ring-emerald-100' : theme.border}`}>
                   
-                  {/* Header Kartu Besar */}
+                  {/* Header Kartu Besar & Tombol Hapus Kategori */}
                   <div className={`p-6 flex justify-between items-center gap-4 border-b ${isAllDone ? 'bg-emerald-50 border-emerald-100' : `${theme.bg}${theme.border}`}`}>
                     <div className="flex items-center gap-3">
                       <button onClick={() => toggleCategoryCard(categoryName)} className={`p-1.5 rounded-lg transition ${isAllDone ? 'text-emerald-700 hover:bg-emerald-100' : `${theme.text} hover:bg-white/50`}`}>
@@ -215,7 +216,18 @@ export default function ChecklistPage() {
                         {isAllDone && <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1 shadow-sm"><CheckCircle2 size={14} /> All Done</span>}
                       </div>
                     </div>
-                    <p className={`text-sm font-bold ${isAllDone ? 'text-emerald-700' : theme.text} opacity-80`}>{catDoneCount} / {items.length} Selesai</p>
+                    
+                    {/* Aksi Kanan Header */}
+                    <div className="flex items-center gap-4">
+                      <p className={`text-sm font-bold ${isAllDone ? 'text-emerald-700' : theme.text} opacity-80 hidden md:block`}>{catDoneCount} / {items.length} Selesai</p>
+                      <button 
+                        onClick={() => handleDeleteCategory(categoryName)}
+                        className={`p-2 rounded-xl transition ${isAllDone ? 'text-emerald-600 hover:bg-emerald-200' : `${theme.text} opacity-50 hover:opacity-100 hover:bg-white/50`}`}
+                        title="Hapus Kartu Kategori"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Isi Kartu (Baris Detail Item) */}
@@ -249,7 +261,7 @@ export default function ChecklistPage() {
                               </div>
                             </div>
 
-                            {/* Kanan: Aksi (Tandai Selesai, Edit, Hapus) 3 Baris Vertikal */}
+                            {/* Kanan: Aksi 3 Baris */}
                             <div className="flex flex-col gap-2 min-w-[140px] items-stretch w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
                               <button 
                                 onClick={() => toggleCompletion(item.id, item.is_completed)}
@@ -299,17 +311,17 @@ export default function ChecklistPage() {
                   <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Contoh: Rias pengantin" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
                 </div>
 
-                {/* Dropdown Kategori dengan Fitur Kategori Kustom */}
+                {/* Dropdown Kategori Bersih (Hanya dari DB) */}
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kategori *</label>
                   <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
                     {dynamicCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                      <option key={cat as string} value={cat as string}>{cat as string}</option>
                     ))}
                     <option value="custom" className="font-bold text-rose-600">+ Tambah Kategori Baru...</option>
                   </select>
                   
-                  {/* Kotak Input Muncul Jika Memilih "+ Tambah Kategori Baru..." */}
+                  {/* Form input kategori baru */}
                   <AnimatePresence>
                     {formData.category === 'custom' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2">
