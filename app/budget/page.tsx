@@ -94,12 +94,26 @@ export default function BudgetPage() {
     fetchData();
   };
 
+  // Fungsi untuk mendapatkan tema warna kartu berdasarkan kategori
+  const getCardTheme = (categoryId: string) => {
+    const index = categories.findIndex(c => c.id === categoryId);
+    const idx = index !== -1 ? index : 0;
+    const themes = [
+      { bg: 'bg-rose-50', border: 'border-rose-100 border-l-rose-500', text: 'text-rose-900', badge: 'bg-rose-100 text-rose-800 border-rose-200' },
+      { bg: 'bg-blue-50', border: 'border-blue-100 border-l-blue-500', text: 'text-blue-900', badge: 'bg-blue-100 text-blue-800 border-blue-200' },
+      { bg: 'bg-emerald-50', border: 'border-emerald-100 border-l-emerald-500', text: 'text-emerald-900', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+      { bg: 'bg-purple-50', border: 'border-purple-100 border-l-purple-500', text: 'text-purple-900', badge: 'bg-purple-100 text-purple-800 border-purple-200' },
+      { bg: 'bg-amber-50', border: 'border-amber-100 border-l-amber-500', text: 'text-amber-900', badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+    ];
+    return themes[idx % themes.length];
+  };
+
   if (isLoading) return <div className="flex justify-center pt-20 text-gray-400">Memuat Data Budget...</div>;
 
   return (
     <div className="pb-20 max-w-6xl mx-auto">
       
-      {/* Banner Header Berwarna (Desain Baru) */}
+      {/* Banner Header Berwarna */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
@@ -133,52 +147,76 @@ export default function BudgetPage() {
         <SummaryCard title="Sudah Dibayar" amount={totalPaid} icon={<CheckCircle size={20} className="text-emerald-500"/>} />
       </div>
 
-      {/* Tabel Data */}
-      <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[800px]">
-          <thead>
-            <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400">
-              <th className="pb-4 font-medium">Nama Item / Vendor</th>
-              <th className="pb-4 font-medium">Estimasi</th>
-              <th className="pb-4 font-medium">Realisasi (Deal)</th>
-              <th className="pb-4 font-medium">Terbayar</th>
-              <th className="pb-4 font-medium">Status</th>
-              <th className="pb-4 font-medium text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50 text-sm">
-            {expenses.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-gray-400">Belum ada data pengeluaran.</td></tr>
-            ) : (
-              expenses.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/50 transition">
-                  <td className="py-4">
-                    <p className="font-semibold text-gray-800">{item.vendor_name}</p>
-                    <p className="text-xs text-gray-400">{item.budget_categories?.name}</p>
-                  </td>
-                  <td className="py-4 text-gray-500">Rp {Number(item.estimated_cost).toLocaleString('id-ID')}</td>
-                  <td className="py-4 font-medium text-gray-800">Rp {Number(item.actual_cost).toLocaleString('id-ID')}</td>
-                  <td className="py-4 font-medium text-rose-700">Rp {Number(item.paid_amount).toLocaleString('id-ID')}</td>
-                  <td className="py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      item.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-800' :
-                      item.payment_status === 'DP' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-600'
+      {/* Kartu Daftar Pengeluaran (Menggantikan Tabel) */}
+      <div className="space-y-4">
+        <AnimatePresence>
+          {expenses.length === 0 ? (
+            <div className="bg-white rounded-3xl p-10 text-center border border-gray-100">
+              <p className="text-gray-400 mb-4">Belum ada data pengeluaran.</p>
+              <button onClick={() => setIsModalOpen(true)} className="bg-rose-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
+                + Tambah Budget Pertama
+              </button>
+            </div>
+          ) : (
+            expenses.map((item) => {
+              const theme = getCardTheme(item.category_id);
+              return (
+                <motion.div 
+                  key={item.id} 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                  className={`p-6 rounded-[2rem] border border-l-[6px] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all ${theme.bg} ${theme.border}`}
+                >
+                  {/* Bagian Kiri: Vendor & Kategori */}
+                  <div className="flex-1">
+                    <span className={`text-xs px-3 py-1 rounded-full font-bold border mb-3 inline-block shadow-sm ${theme.badge}`}>
+                      {item.budget_categories?.name || 'Lain-lain'}
+                    </span>
+                    <h3 className={`font-bold text-xl ${theme.text}`}>{item.vendor_name}</h3>
+                    {item.notes && <p className={`text-sm mt-1 font-medium opacity-70 ${theme.text}`}>{item.notes}</p>}
+                  </div>
+
+                  {/* Bagian Tengah: Rincian Angka */}
+                  <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-8 w-full md:w-auto">
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Estimasi</p>
+                      <p className={`font-semibold ${theme.text}`}>Rp {Number(item.estimated_cost).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Deal (Realisasi)</p>
+                      <p className={`font-extrabold ${theme.text}`}>Rp {Number(item.actual_cost).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div className="bg-white/60 px-4 py-2 rounded-xl border border-white/50 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Terbayar</p>
+                      <p className="font-extrabold text-rose-700">Rp {Number(item.paid_amount).toLocaleString('id-ID')}</p>
+                    </div>
+                  </div>
+
+                  {/* Bagian Kanan: Status & Aksi */}
+                  <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-gray-200/50 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
+                    <span className={`px-4 py-2 rounded-full text-xs font-bold border shadow-sm ${
+                      item.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                      item.payment_status === 'DP' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                      'bg-gray-100 text-gray-600 border-gray-200'
                     }`}>
                       {item.payment_status}
                     </span>
-                  </td>
-                  <td className="py-4 text-right">
-                    <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-rose-600"><Trash2 size={16} /></button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                    
+                    <button 
+                      onClick={() => handleDelete(item.id)} 
+                      className="p-2.5 bg-white rounded-full text-gray-400 hover:text-rose-600 shadow-sm hover:shadow transition"
+                      title="Hapus Item Budget"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Advanced Modal (Pop-up Form) */}
+      {/* Advanced Modal (Pop-up Form) - Tetap Sama */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
