@@ -1,57 +1,47 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Plus, X, Trash2, Receipt, CheckCircle, Clock, Edit2, Calculator, CheckSquare } from 'lucide-react';
+import { Wallet, Plus, X, Trash2, Receipt, CheckCircle, Clock, Edit2, Calculator, CheckSquare, ChevronDown, ChevronUp, Link2, Phone, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function BudgetPage() {
-  const [expenses, setExpenses] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [openCardCategories, setOpenCardCategories] = useState<string[]>([]);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
-  // Summary State
-  const [totalBudget, setTotalBudget] = useState(0);
-  const [totalEstimated, setTotalEstimated] = useState(0);
-  const [totalActual, setTotalActual] = useState(0);
-  const [totalPaid, setTotalPaid] = useState(0);
-
-  // Form State
-  const [formData, setFormData] = useState({
+  // Form States
+  const [categoryForm, setCategoryForm] = useState({ name: '', allocated_amount: '' });
+  const [itemForm, setItemForm] = useState({
     category_id: '',
     vendor_name: '',
+    contact: '',
+    vendor_link: '',
     estimated_cost: '',
     actual_cost: '',
     paid_amount: '',
     payment_status: 'Belum bayar',
     payment_date: '',
     due_date: '',
-    payment_proof_link: '',
     notes: ''
   });
 
   const fetchData = async () => {
-    const { data: catData } = await supabase.from('budget_categories').select('*');
-    if (catData) setCategories(catData);
+    const { data: catData } = await supabase.from('budget_categories').select('*').order('created_at', { ascending: true });
+    const { data: expData } = await supabase.from('expenses').select('*, budget_categories(name)').order('created_at', { ascending: false });
 
-    const budget = catData?.reduce((sum, cat) => sum + Number(cat.allocated_amount), 0) || 0;
-    setTotalBudget(budget);
-
-    const { data: expData } = await supabase
-      .from('expenses')
-      .select('*, budget_categories(name)')
-      .order('created_at', { ascending: false });
-
-    if (expData) {
-      setExpenses(expData);
-      setTotalEstimated(expData.reduce((sum, exp) => sum + Number(exp.estimated_cost), 0));
-      setTotalActual(expData.reduce((sum, exp) => sum + Number(exp.actual_cost), 0));
-      setTotalPaid(expData.reduce((sum, exp) => sum + Number(exp.paid_amount), 0));
+    if (catData) {
+      setCategories(catData);
+      setOpenCardCategories(catData.map(c => c.id));
     }
+    if (expData) setExpenses(expData);
+    
     setIsLoading(false);
   };
 
@@ -59,104 +49,120 @@ export default function BudgetPage() {
     fetchData();
   }, []);
 
-  const resetForm = () => {
-    setFormData({
-      category_id: '', vendor_name: '', estimated_cost: '', actual_cost: '',
-      paid_amount: '', payment_status: 'Belum bayar', payment_date: '',
-      due_date: '', payment_proof_link: '', notes: ''
-    });
-    setEditingId(null);
-    setIsModalOpen(false);
+  const toggleCategoryCard = (id: string) => {
+    setOpenCardCategories(prev => prev.includes(id) ? prev.filter(catId => catId !== id) : [...prev, id]);
   };
 
-  const handleEditClick = (item: any) => {
-    setFormData({
+  // Handler Kategori
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryForm.name) return;
+
+    const payload = {
+      name: categoryForm.name,
+      allocated_amount: Number(categoryForm.allocated_amount) || 0
+    };
+
+    const { error } = await supabase.from('budget_categories').insert([payload]);
+    if (!error) {
+      setCategoryForm({ name: '', allocated_amount: '' });
+      setIsCategoryModalOpen(false);
+      fetchData();
+    } else alert('Gagal menyimpan kategori.');
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!confirm(`Hapus Kategori "${name}" beserta SELURUH data pengeluaran di dalamnya?`)) return;
+    await supabase.from('budget_categories').delete().eq('id', id);
+    fetchData();
+  };
+
+  // Handler Item Pengeluaran
+  const openAddItemModal = (catId?: string) => {
+    setEditingItemId(null);
+    setItemForm({
+      category_id: catId || (categories[0]?.id || ''),
+      vendor_name: '', contact: '', vendor_link: '',
+      estimated_cost: '', actual_cost: '', paid_amount: '',
+      payment_status: 'Belum bayar', payment_date: '', due_date: '', notes: ''
+    });
+    setIsItemModalOpen(true);
+  };
+
+  const openEditItemModal = (item: any) => {
+    setEditingItemId(item.id);
+    setItemForm({
       category_id: item.category_id || '',
       vendor_name: item.vendor_name || '',
+      contact: item.contact || '',
+      vendor_link: item.vendor_link || '',
       estimated_cost: item.estimated_cost || '',
       actual_cost: item.actual_cost || '',
       paid_amount: item.paid_amount || '',
       payment_status: item.payment_status || 'Belum bayar',
       payment_date: item.payment_date || '',
       due_date: item.due_date || '',
-      payment_proof_link: item.payment_proof_link || '',
       notes: item.notes || ''
     });
-    setEditingId(item.id);
-    setIsModalOpen(true);
+    setIsItemModalOpen(true);
   };
 
-  const handleChange = (e: any) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const payload = {
-      category_id: formData.category_id,
-      vendor_name: formData.vendor_name,
-      estimated_cost: Number(formData.estimated_cost) || 0,
-      actual_cost: Number(formData.actual_cost) || 0,
-      paid_amount: Number(formData.paid_amount) || 0,
-      payment_status: formData.payment_status,
-      payment_date: formData.payment_date || null,
-      due_date: formData.due_date || null,
-      payment_proof_link: formData.payment_proof_link,
-      notes: formData.notes
+      category_id: itemForm.category_id,
+      vendor_name: itemForm.vendor_name,
+      contact: itemForm.contact,
+      vendor_link: itemForm.vendor_link,
+      estimated_cost: Number(itemForm.estimated_cost) || 0,
+      actual_cost: Number(itemForm.actual_cost) || 0,
+      paid_amount: Number(itemForm.paid_amount) || 0,
+      payment_status: itemForm.payment_status,
+      payment_date: itemForm.payment_date || null,
+      due_date: itemForm.due_date || null,
+      notes: itemForm.notes
     };
 
-    if (editingId) {
-      // Mode Edit (Update)
-      const { error } = await supabase.from('expenses').update(payload).eq('id', editingId);
-      if (!error) {
-        resetForm();
-        fetchData();
-      } else {
-        alert('Gagal memperbarui data.');
-      }
+    if (editingItemId) {
+      const { error } = await supabase.from('expenses').update(payload).eq('id', editingItemId);
+      if (!error) { setIsItemModalOpen(false); fetchData(); }
     } else {
-      // Mode Tambah Baru (Insert)
       const { error } = await supabase.from('expenses').insert([payload]);
-      if (!error) {
-        resetForm();
-        fetchData();
-      } else {
-        alert('Gagal menyimpan data.');
-      }
+      if (!error) { setIsItemModalOpen(false); fetchData(); }
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     if (!confirm('Hapus detail budget ini?')) return;
     await supabase.from('expenses').delete().eq('id', id);
     fetchData();
   };
 
-  const getCardTheme = (categoryId: string) => {
-    const index = categories.findIndex(c => c.id === categoryId);
-    const idx = index !== -1 ? index : 0;
-    const themes = [
-      { bg: 'bg-rose-50', border: 'border-rose-100 border-l-rose-500', text: 'text-rose-900', badge: 'bg-rose-100 text-rose-800 border-rose-200' },
-      { bg: 'bg-blue-50', border: 'border-blue-100 border-l-blue-500', text: 'text-blue-900', badge: 'bg-blue-100 text-blue-800 border-blue-200' },
-      { bg: 'bg-emerald-50', border: 'border-emerald-100 border-l-emerald-500', text: 'text-emerald-900', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-      { bg: 'bg-purple-50', border: 'border-purple-100 border-l-purple-500', text: 'text-purple-900', badge: 'bg-purple-100 text-purple-800 border-purple-200' },
-      { bg: 'bg-amber-50', border: 'border-amber-100 border-l-amber-500', text: 'text-amber-900', badge: 'bg-amber-100 text-amber-800 border-amber-200' },
-    ];
-    return themes[idx % themes.length];
-  };
-
-  // Kalkulasi Global
+  // Kalkulasi & Tema
+  const totalBudget = categories.reduce((sum, cat) => sum + Number(cat.allocated_amount || 0), 0);
+  const totalEstimated = expenses.reduce((sum, exp) => sum + Number(exp.estimated_cost || 0), 0);
+  const totalActual = expenses.reduce((sum, exp) => sum + Number(exp.actual_cost || 0), 0);
+  const totalPaid = expenses.reduce((sum, exp) => sum + Number(exp.paid_amount || 0), 0);
   const totalSelisih = totalEstimated - totalActual;
-  const totalItems = expenses.length;
   const completedItems = expenses.filter(exp => exp.payment_status === 'Lunas').length;
+
+  const getCategoryTheme = (index: number) => {
+    const themes = [
+      { bg: 'bg-rose-50', border: 'border-rose-200 border-l-rose-500', text: 'text-rose-900', btn: 'bg-rose-100 text-rose-800' },
+      { bg: 'bg-blue-50', border: 'border-blue-200 border-l-blue-500', text: 'text-blue-900', btn: 'bg-blue-100 text-blue-800' },
+      { bg: 'bg-emerald-50', border: 'border-emerald-200 border-l-emerald-500', text: 'text-emerald-900', btn: 'bg-emerald-100 text-emerald-800' },
+      { bg: 'bg-purple-50', border: 'border-purple-200 border-l-purple-500', text: 'text-purple-900', btn: 'bg-purple-100 text-purple-800' },
+      { bg: 'bg-amber-50', border: 'border-amber-200 border-l-amber-500', text: 'text-amber-900', btn: 'bg-amber-100 text-amber-800' },
+    ];
+    return themes[index % themes.length];
+  };
 
   if (isLoading) return <div className="flex justify-center pt-20 text-gray-400">Memuat Data Budget...</div>;
 
   return (
     <div className="pb-20 max-w-6xl mx-auto">
       
-      {/* Banner Header */}
+      {/* Banner Header Berwarna */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
@@ -171,24 +177,24 @@ export default function BudgetPage() {
           <h1 className="text-3xl md:text-4xl font-serif italic font-semibold mb-2 text-white flex items-center gap-3">
             <Wallet size={32} className="text-rose-300" /> Budget Planner
           </h1>
-          <p className="text-rose-100 text-sm font-medium">Pantau estimasi, aktual budget, selisih, dan status pelunasan.</p>
+          <p className="text-rose-100 text-sm font-medium">Pantau estimasi, aktual budget, selisih, dan detail vendor per kategori.</p>
         </div>
 
-        <button 
-          onClick={() => { resetForm(); setIsModalOpen(true); }}
-          className="relative z-10 bg-white text-rose-900 hover:bg-rose-50 px-6 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition shadow-lg"
-        >
-          <Plus size={18} /> Tambah Detail Budget
-        </button>
+        <div className="relative z-10 flex flex-wrap items-center gap-3">
+          <button onClick={() => setIsCategoryModalOpen(true)} className="bg-rose-800/60 border border-rose-400/30 text-white hover:bg-rose-800 px-5 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition backdrop-blur-sm">
+            <Plus size={18} /> Tambah Kategori
+          </button>
+          <button onClick={() => openAddItemModal()} className="bg-white text-rose-900 hover:bg-rose-50 px-5 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition shadow-lg">
+            <Plus size={18} /> Tambah Detail Budget
+          </button>
+        </div>
       </motion.div>
 
-      {/* Metric Cards (Desain Berwarna 6 Kotak) */}
+      {/* 6 Kartu Metrik Global */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-6 rounded-[2rem] border border-blue-100 shadow-sm">
           <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1 flex items-center gap-1"><CheckSquare size={14}/> Status Pembayaran</p>
-          <p className="text-3xl font-extrabold text-blue-900">
-            {completedItems} <span className="text-sm font-medium text-blue-600/70">/ {totalItems} Lunas</span>
-          </p>
+          <p className="text-3xl font-extrabold text-blue-900">{completedItems} <span className="text-sm font-medium text-blue-600/70">/ {expenses.length} Lunas</span></p>
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 p-6 rounded-[2rem] border border-amber-100 shadow-sm">
           <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={14}/> Estimasi Biaya</p>
@@ -214,85 +220,133 @@ export default function BudgetPage() {
         </div>
       </div>
 
-      {/* Kartu Daftar Pengeluaran */}
-      <div className="space-y-4">
+      {/* Kartu Kategori Akordeon untuk Budget */}
+      <div className="space-y-6">
         <AnimatePresence>
-          {expenses.length === 0 ? (
+          {categories.length === 0 ? (
             <div className="bg-white rounded-3xl p-10 text-center border border-gray-100">
-              <p className="text-gray-400 mb-4">Belum ada data pengeluaran.</p>
-              <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="bg-rose-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
-                + Tambah Budget Pertama
+              <p className="text-gray-400 mb-4">Belum ada Kategori Anggaran.</p>
+              <button onClick={() => setIsCategoryModalOpen(true)} className="bg-rose-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
+                + Tambah Kategori Pertama
               </button>
             </div>
           ) : (
-            expenses.map((item) => {
-              const theme = getCardTheme(item.category_id);
-              const selisih = Number(item.estimated_cost) - Number(item.actual_cost);
-              
+            categories.map((cat, index) => {
+              const catExpenses = expenses.filter((e) => e.category_id === cat.id);
+              const catActual = catExpenses.reduce((sum, e) => sum + Number(e.actual_cost || 0), 0);
+              const catPagu = Number(cat.allocated_amount || 0);
+              const isOverBudget = catActual > catPagu;
+              const isOpen = openCardCategories.includes(cat.id);
+              const theme = getCategoryTheme(index);
+
               return (
                 <motion.div 
-                  key={item.id} 
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                  className={`p-6 rounded-[2rem] border border-l-[6px] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all ${theme.bg} ${theme.border}`}
+                  key={cat.id} 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className={`bg-white rounded-[2rem] border border-l-[8px] transition-all shadow-sm overflow-hidden ${isOverBudget ? 'border-rose-200 border-l-rose-500' : theme.border}`}
                 >
-                  {/* Bagian Kiri: Vendor & Kategori */}
-                  <div className="flex-1">
-                    <span className={`text-xs px-3 py-1 rounded-full font-bold border mb-3 inline-block shadow-sm ${theme.badge}`}>
-                      {item.budget_categories?.name || 'Lain-lain'}
-                    </span>
-                    <h3 className={`font-bold text-xl ${theme.text}`}>{item.vendor_name}</h3>
-                    {item.notes && <p className={`text-sm mt-1 font-medium opacity-70 ${theme.text}`}>{item.notes}</p>}
-                  </div>
+                  
+                  {/* Header Kartu Besar (Kategori) */}
+                  <div className={`p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b ${isOverBudget ? 'bg-rose-50/50' : theme.bg}`}>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => toggleCategoryCard(cat.id)} className={`p-1.5 rounded-lg transition hover:bg-white/50 ${isOverBudget ? 'text-rose-700' : theme.text}`}>
+                        {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </button>
+                      <div>
+                        <h2 className={`text-xl font-extrabold tracking-wide uppercase ${isOverBudget ? 'text-rose-900' : theme.text}`}>{cat.name}</h2>
+                        <p className={`text-xs font-medium mt-1 opacity-70 ${isOverBudget ? 'text-rose-700' : theme.text}`}>{catExpenses.length} Detail Pengeluaran</p>
+                      </div>
+                    </div>
 
-                  {/* Bagian Tengah: Rincian Angka (Estimasi, Aktual, Selisih, Terbayar) */}
-                  <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto">
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Estimasi</p>
-                      <p className={`font-semibold ${theme.text}`}>Rp {Number(item.estimated_cost).toLocaleString('id-ID')}</p>
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Aktual Budget</p>
-                      <p className={`font-extrabold ${theme.text}`}>Rp {Number(item.actual_cost).toLocaleString('id-ID')}</p>
-                    </div>
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Selisih</p>
-                      <p className={`font-bold ${selisih < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {selisih < 0 ? '-Rp ' : '+Rp '} {Math.abs(selisih).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                    <div className="bg-white/60 px-4 py-2.5 rounded-xl border border-white/50 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Terbayar</p>
-                      <p className="font-extrabold text-rose-700">Rp {Number(item.paid_amount).toLocaleString('id-ID')}</p>
+                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+                      <div className="text-right">
+                        <p className={`text-xs font-semibold opacity-60 ${isOverBudget ? 'text-rose-700' : theme.text}`}>Realisasi / Pagu Target</p>
+                        <p className={`text-sm font-bold ${isOverBudget ? 'text-rose-700' : theme.text}`}>
+                          Rp {catActual.toLocaleString('id-ID')} <span className="text-xs font-medium opacity-60">/ Rp {catPagu.toLocaleString('id-ID')}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openAddItemModal(cat.id)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${isOverBudget ? 'bg-rose-200 text-rose-900 hover:bg-rose-300' : theme.btn}`}>+ Item</button>
+                        <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className={`p-2 rounded-xl transition opacity-50 hover:opacity-100 hover:bg-white/50 ${isOverBudget ? 'text-rose-700' : theme.text}`} title="Hapus Kategori"><Trash2 size={18} /></button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Bagian Kanan: Status & Aksi */}
-                  <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-gray-200/50 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
-                    <span className={`px-4 py-2 rounded-full text-xs font-bold border shadow-sm ${
-                      item.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                      item.payment_status === 'DP' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                      'bg-gray-100 text-gray-600 border-gray-200'
-                    }`}>
-                      {item.payment_status}
-                    </span>
-                    
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => handleEditClick(item)} 
-                        className="p-2.5 bg-white rounded-full text-gray-400 hover:text-blue-600 shadow-sm hover:shadow transition"
-                        title="Edit Item Budget"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(item.id)} 
-                        className="p-2.5 bg-white rounded-full text-gray-400 hover:text-rose-600 shadow-sm hover:shadow transition"
-                        title="Hapus Item Budget"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
+                  {/* Isi Akordeon: Item Detail Budget */}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-6 space-y-4 bg-white">
+                        {catExpenses.length === 0 ? (
+                          <p className="text-xs text-gray-400 text-center py-4">Belum ada rincian budget di kategori ini.</p>
+                        ) : (
+                          catExpenses.map((item) => {
+                            const selisih = Number(item.estimated_cost) - Number(item.actual_cost);
+                            return (
+                              <div key={item.id} className="bg-white p-5 rounded-2xl border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:shadow-md transition">
+                                
+                                {/* Kiri: Nama & Kontak Vendor */}
+                                <div className="flex-1">
+                                  <h3 className="font-bold text-lg mb-2 text-[#2C3E50]">{item.vendor_name}</h3>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    {item.contact && (
+                                      <span className="text-xs font-semibold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100 flex items-center gap-1">
+                                        <Phone size={12}/> {item.contact}
+                                      </span>
+                                    )}
+                                    {item.vendor_link && (
+                                      <a href={item.vendor_link.startsWith('http') ? item.vendor_link : `https://${item.vendor_link}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 hover:bg-blue-200 flex items-center gap-1 transition">
+                                        <Link2 size={12}/> Link Vendor
+                                      </a>
+                                    )}
+                                    {item.notes && (
+                                      <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200">
+                                        Catatan: {item.notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Tengah: Angka Budget */}
+                                <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto">
+                                  <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Estimasi</p>
+                                    <p className="font-semibold text-gray-700">Rp {Number(item.estimated_cost).toLocaleString('id-ID')}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700/60">Aktual</p>
+                                    <p className="font-extrabold text-emerald-800">Rp {Number(item.actual_cost).toLocaleString('id-ID')}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Selisih</p>
+                                    <p className={`font-bold ${selisih < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                      {selisih < 0 ? '-Rp ' : '+Rp '} {Math.abs(selisih).toLocaleString('id-ID')}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Kanan: Status & Aksi */}
+                                <div className="flex flex-col gap-2 min-w-[120px] items-stretch w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 pl-0 md:pl-4 md:border-l border-gray-100">
+                                  <div className={`px-4 py-2 rounded-xl text-center text-xs font-bold border shadow-sm ${
+                                    item.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                    item.payment_status === 'DP' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                                  }`}>
+                                    {item.payment_status}
+                                  </div>
+                                  <p className="text-center text-[10px] font-bold text-rose-700 mt-1">Terbayar: Rp {Number(item.paid_amount).toLocaleString('id-ID')}</p>
+                                  
+                                  <div className="flex justify-center items-center gap-2 mt-2">
+                                    <button onClick={() => openEditItemModal(item)} className="p-2 bg-white rounded-full text-gray-400 hover:text-blue-600 border border-gray-100 shadow-sm hover:shadow transition"><Edit2 size={14} /></button>
+                                    <button onClick={() => handleDeleteItem(item.id)} className="p-2 bg-white rounded-full text-gray-400 hover:text-rose-600 border border-gray-100 shadow-sm hover:shadow transition"><Trash2 size={14} /></button>
+                                  </div>
+                                </div>
+
+                              </div>
+                            );
+                          })
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               );
             })
@@ -300,79 +354,96 @@ export default function BudgetPage() {
         </AnimatePresence>
       </div>
 
-      {/* Modal Tambah/Edit */}
+      {/* Modal 1: Tambah Kategori Anggaran */}
       <AnimatePresence>
-        {isModalOpen && (
+        {isCategoryModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
-            >
-              <button onClick={resetForm} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+              <button onClick={() => setIsCategoryModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">Tambah Kategori Anggaran</h2>
+              <form onSubmit={handleSaveCategory} className="space-y-4">
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Kategori (Contoh: Venue & Catering) *</label>
+                  <input type="text" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Target Pagu Budget (Rp)</label>
+                  <input type="number" value={categoryForm.allocated_amount} onChange={(e) => setCategoryForm({ ...categoryForm, allocated_amount: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
+                </div>
+                <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">Simpan Kategori</button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 2: Tambah/Edit Detail Item Vendor */}
+      <AnimatePresence>
+        {isItemModalOpen && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+              <button onClick={() => setIsItemModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">{editingItemId ? 'Edit Detail Budget' : 'Tambah Detail Budget'}</h2>
               
-              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">
-                {editingId ? 'Edit Detail Budget' : 'Tambah Detail Budget'}
-              </h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSaveItem} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Item / Vendor *</label>
-                    <input type="text" name="vendor_name" value={formData.vendor_name} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" required />
-                  </div>
-                  <div>
                     <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kategori *</label>
-                    <select name="category_id" value={formData.category_id} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" required>
+                    <select name="category_id" value={itemForm.category_id} onChange={(e) => setItemForm({ ...itemForm, category_id: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" required>
                       <option value="">Pilih Kategori...</option>
                       {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Item / Vendor *</label>
+                    <input type="text" name="vendor_name" value={itemForm.vendor_name} onChange={(e) => setItemForm({ ...itemForm, vendor_name: e.target.value })} placeholder="Cth: Dekorasi Pelaminan..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" required />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Estimasi Biaya (Rp)</label>
-                    <input type="number" name="estimated_cost" value={formData.estimated_cost} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kontak / No HP Vendor</label>
+                    <input type="text" name="contact" value={itemForm.contact} onChange={(e) => setItemForm({ ...itemForm, contact: e.target.value })} placeholder="0812-XXXX..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
                   </div>
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Aktual Budget (Deal) (Rp)</label>
-                    <input type="number" name="actual_cost" value={formData.actual_cost} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Link (Web / Instagram)</label>
+                    <input type="text" name="vendor_link" value={itemForm.vendor_link} onChange={(e) => setItemForm({ ...itemForm, vendor_link: e.target.value })} placeholder="https://instagram.com/..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4 mt-4">
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                  <div>
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Estimasi Biaya (Rp)</label>
+                    <input type="number" name="estimated_cost" value={itemForm.estimated_cost} onChange={(e) => setItemForm({ ...itemForm, estimated_cost: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-wider text-emerald-700/70 mb-1">Aktual Budget (Deal) (Rp)</label>
+                    <input type="number" name="actual_cost" value={itemForm.actual_cost} onChange={(e) => setItemForm({ ...itemForm, actual_cost: e.target.value })} className="w-full border border-emerald-200 rounded-xl p-3 text-sm focus:outline-emerald-500 bg-emerald-50/30" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Status Pembayaran</label>
-                    <select name="payment_status" value={formData.payment_status} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
+                    <select name="payment_status" value={itemForm.payment_status} onChange={(e) => setItemForm({ ...itemForm, payment_status: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
                       <option value="Belum bayar">Belum bayar</option>
                       <option value="DP">DP (Cicilan)</option>
                       <option value="Lunas">Lunas</option>
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Jumlah Sudah Dibayar (Rp)</label>
-                    <input type="number" name="paid_amount" value={formData.paid_amount} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Tanggal Pembayaran</label>
-                    <input type="date" name="payment_date" value={formData.payment_date} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm text-gray-600 focus:outline-rose-400 bg-gray-50/50" />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Deadline Pelunasan</label>
-                    <input type="date" name="due_date" value={formData.due_date} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm text-gray-600 focus:outline-rose-400 bg-gray-50/50" />
+                    <label className="block text-xs uppercase tracking-wider text-rose-700/70 mb-1">Jumlah Sudah Dibayar (Rp)</label>
+                    <input type="number" name="paid_amount" value={itemForm.paid_amount} onChange={(e) => setItemForm({ ...itemForm, paid_amount: e.target.value })} className="w-full border border-rose-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-rose-50/30" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Catatan Tambahan</label>
-                  <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} placeholder="Contoh: Nomor rekening vendor..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
+                  <textarea name="notes" value={itemForm.notes} onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value })} rows={2} placeholder="Contoh: Nomor rekening, detail paket..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
                 </div>
 
                 <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">
-                  {editingId ? 'Simpan Perubahan' : 'Simpan Detail Budget'}
+                  {editingItemId ? 'Simpan Perubahan' : 'Simpan Detail Budget'}
                 </button>
               </form>
             </motion.div>
