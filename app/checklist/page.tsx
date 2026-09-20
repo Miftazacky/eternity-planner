@@ -133,13 +133,14 @@ export default function ChecklistPage() {
     return acc;
   }, {});
 
+  // Update getCategoryTheme dengan aksen border-l yang gelap
   const getCategoryTheme = (index: number) => {
     const themes = [
-      { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-900', btn: 'bg-rose-100 text-rose-800' },
-      { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', btn: 'bg-blue-100 text-blue-800' },
-      { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-900', btn: 'bg-emerald-100 text-emerald-800' },
-      { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900', btn: 'bg-purple-100 text-purple-800' },
-      { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-900', btn: 'bg-amber-100 text-amber-800' },
+      { bg: 'bg-rose-50', border: 'border-rose-100 border-l-rose-500', text: 'text-rose-900', btn: 'bg-rose-100 text-rose-800' },
+      { bg: 'bg-blue-50', border: 'border-blue-100 border-l-blue-500', text: 'text-blue-900', btn: 'bg-blue-100 text-blue-800' },
+      { bg: 'bg-emerald-50', border: 'border-emerald-100 border-l-emerald-500', text: 'text-emerald-900', btn: 'bg-emerald-100 text-emerald-800' },
+      { bg: 'bg-purple-50', border: 'border-purple-100 border-l-purple-500', text: 'text-purple-900', btn: 'bg-purple-100 text-purple-800' },
+      { bg: 'bg-amber-50', border: 'border-amber-100 border-l-amber-500', text: 'text-amber-900', btn: 'bg-amber-100 text-amber-800' },
     ];
     return themes[index % themes.length];
   };
@@ -206,7 +207,12 @@ export default function ChecklistPage() {
               const theme = getCategoryTheme(index);
 
               return (
-                <motion.div key={categoryName} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`bg-white rounded-[2rem] border transition-all shadow-sm overflow-hidden ${isAllDone ? 'border-emerald-300 ring-2 ring-emerald-100' : theme.border}`}>
+                <motion.div 
+                  key={categoryName} 
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  className={`bg-white rounded-[2rem] border border-l-[8px] transition-all shadow-sm overflow-hidden ${isAllDone ? 'border-emerald-200 border-l-emerald-500 ring-2 ring-emerald-50' : theme.border}`}
+                >
                   
                   {/* Header Kartu Besar & Tombol Hapus Kategori */}
                   <div className={`p-6 flex justify-between items-center gap-4 border-b ${isAllDone ? 'bg-emerald-50 border-emerald-100' : `${theme.bg}${theme.border}`}`}>
@@ -323,7 +329,6 @@ export default function ChecklistPage() {
                   <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Contoh: Rias pengantin" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
                 </div>
 
-                {/* Dropdown Kategori Bersih */}
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kategori *</label>
                   <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
@@ -336,14 +341,7 @@ export default function ChecklistPage() {
                   <AnimatePresence>
                     {formData.category === 'custom' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2">
-                        <input 
-                          type="text" 
-                          placeholder="Ketik nama kategori baru..." 
-                          value={customCategory} 
-                          onChange={(e) => setCustomCategory(e.target.value)} 
-                          className="w-full border border-rose-300 rounded-xl p-3 text-sm focus:outline-rose-500 bg-rose-50/50" 
-                          required 
-                        />
+                        <input type="text" placeholder="Ketik nama kategori baru..." value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} className="w-full border border-rose-300 rounded-xl p-3 text-sm focus:outline-rose-500 bg-rose-50/50" required />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -360,7 +358,6 @@ export default function ChecklistPage() {
                   </div>
                 </div>
 
-                {/* Input Vendor & Kontak (Terpisah) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Vendor</label>
