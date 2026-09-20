@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Plus, X, Trash2, Receipt, CheckCircle, Clock } from 'lucide-react';
+import { Wallet, Plus, X, Trash2, Receipt, CheckCircle, Clock, Edit2, Calculator, CheckSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -9,7 +9,10 @@ export default function BudgetPage() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Summary State
   const [totalBudget, setTotalBudget] = useState(0);
@@ -56,13 +59,41 @@ export default function BudgetPage() {
     fetchData();
   }, []);
 
+  const resetForm = () => {
+    setFormData({
+      category_id: '', vendor_name: '', estimated_cost: '', actual_cost: '',
+      paid_amount: '', payment_status: 'Belum bayar', payment_date: '',
+      due_date: '', payment_proof_link: '', notes: ''
+    });
+    setEditingId(null);
+    setIsModalOpen(false);
+  };
+
+  const handleEditClick = (item: any) => {
+    setFormData({
+      category_id: item.category_id || '',
+      vendor_name: item.vendor_name || '',
+      estimated_cost: item.estimated_cost || '',
+      actual_cost: item.actual_cost || '',
+      paid_amount: item.paid_amount || '',
+      payment_status: item.payment_status || 'Belum bayar',
+      payment_date: item.payment_date || '',
+      due_date: item.due_date || '',
+      payment_proof_link: item.payment_proof_link || '',
+      notes: item.notes || ''
+    });
+    setEditingId(item.id);
+    setIsModalOpen(true);
+  };
+
   const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('expenses').insert([{
+    
+    const payload = {
       category_id: formData.category_id,
       vendor_name: formData.vendor_name,
       estimated_cost: Number(formData.estimated_cost) || 0,
@@ -73,18 +104,26 @@ export default function BudgetPage() {
       due_date: formData.due_date || null,
       payment_proof_link: formData.payment_proof_link,
       notes: formData.notes
-    }]);
+    };
 
-    if (!error) {
-      setIsModalOpen(false);
-      setFormData({
-        category_id: '', vendor_name: '', estimated_cost: '', actual_cost: '',
-        paid_amount: '', payment_status: 'Belum bayar', payment_date: '',
-        due_date: '', payment_proof_link: '', notes: ''
-      });
-      fetchData();
+    if (editingId) {
+      // Mode Edit (Update)
+      const { error } = await supabase.from('expenses').update(payload).eq('id', editingId);
+      if (!error) {
+        resetForm();
+        fetchData();
+      } else {
+        alert('Gagal memperbarui data.');
+      }
     } else {
-      alert('Gagal menyimpan data.');
+      // Mode Tambah Baru (Insert)
+      const { error } = await supabase.from('expenses').insert([payload]);
+      if (!error) {
+        resetForm();
+        fetchData();
+      } else {
+        alert('Gagal menyimpan data.');
+      }
     }
   };
 
@@ -94,7 +133,6 @@ export default function BudgetPage() {
     fetchData();
   };
 
-  // Fungsi untuk mendapatkan tema warna kartu berdasarkan kategori
   const getCardTheme = (categoryId: string) => {
     const index = categories.findIndex(c => c.id === categoryId);
     const idx = index !== -1 ? index : 0;
@@ -108,12 +146,17 @@ export default function BudgetPage() {
     return themes[idx % themes.length];
   };
 
+  // Kalkulasi Global
+  const totalSelisih = totalEstimated - totalActual;
+  const totalItems = expenses.length;
+  const completedItems = expenses.filter(exp => exp.payment_status === 'Lunas').length;
+
   if (isLoading) return <div className="flex justify-center pt-20 text-gray-400">Memuat Data Budget...</div>;
 
   return (
     <div className="pb-20 max-w-6xl mx-auto">
       
-      {/* Banner Header Berwarna */}
+      {/* Banner Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
@@ -128,38 +171,64 @@ export default function BudgetPage() {
           <h1 className="text-3xl md:text-4xl font-serif italic font-semibold mb-2 text-white flex items-center gap-3">
             <Wallet size={32} className="text-rose-300" /> Budget Planner
           </h1>
-          <p className="text-rose-100 text-sm font-medium">Pantau estimasi, realisasi pembayaran, dan status pelunasan.</p>
+          <p className="text-rose-100 text-sm font-medium">Pantau estimasi, aktual budget, selisih, dan status pelunasan.</p>
         </div>
 
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { resetForm(); setIsModalOpen(true); }}
           className="relative z-10 bg-white text-rose-900 hover:bg-rose-50 px-6 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition shadow-lg"
         >
           <Plus size={18} /> Tambah Detail Budget
         </button>
       </motion.div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <SummaryCard title="Target Budget" amount={totalBudget} icon={<Wallet size={20} className="text-blue-500"/>} />
-        <SummaryCard title="Estimasi Biaya" amount={totalEstimated} icon={<Clock size={20} className="text-amber-500"/>} />
-        <SummaryCard title="Realisasi Biaya (Deal)" amount={totalActual} icon={<Receipt size={20} className="text-rose-500"/>} />
-        <SummaryCard title="Sudah Dibayar" amount={totalPaid} icon={<CheckCircle size={20} className="text-emerald-500"/>} />
+      {/* Metric Cards (Desain Berwarna 6 Kotak) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-6 rounded-[2rem] border border-blue-100 shadow-sm">
+          <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1 flex items-center gap-1"><CheckSquare size={14}/> Status Pembayaran</p>
+          <p className="text-3xl font-extrabold text-blue-900">
+            {completedItems} <span className="text-sm font-medium text-blue-600/70">/ {totalItems} Lunas</span>
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 p-6 rounded-[2rem] border border-amber-100 shadow-sm">
+          <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={14}/> Estimasi Biaya</p>
+          <p className="text-3xl font-extrabold text-amber-700">Rp {totalEstimated.toLocaleString('id-ID')}</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 p-6 rounded-[2rem] border border-emerald-100 shadow-sm">
+          <p className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Receipt size={14}/> Aktual Budget</p>
+          <p className="text-3xl font-extrabold text-emerald-700">Rp {totalActual.toLocaleString('id-ID')}</p>
+        </div>
+        <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50/50 p-6 rounded-[2rem] border border-purple-100 shadow-sm">
+          <p className="text-xs font-bold text-purple-500 uppercase tracking-wider mb-1 flex items-center gap-1"><CheckCircle size={14}/> Sudah Dibayar</p>
+          <p className="text-3xl font-extrabold text-purple-700">Rp {totalPaid.toLocaleString('id-ID')}</p>
+        </div>
+        <div className="bg-gradient-to-br from-rose-50 to-pink-50/50 p-6 rounded-[2rem] border border-rose-100 shadow-sm">
+          <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Calculator size={14}/> Total Selisih</p>
+          <p className={`text-3xl font-extrabold ${totalSelisih < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+            {totalSelisih < 0 ? '-Rp ' : '+Rp '} {Math.abs(totalSelisih).toLocaleString('id-ID')}
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-sky-50 to-cyan-50/50 p-6 rounded-[2rem] border border-sky-100 shadow-sm">
+          <p className="text-xs font-bold text-sky-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Wallet size={14}/> Target Pagu Budget</p>
+          <p className="text-3xl font-extrabold text-sky-700">Rp {totalBudget.toLocaleString('id-ID')}</p>
+        </div>
       </div>
 
-      {/* Kartu Daftar Pengeluaran (Menggantikan Tabel) */}
+      {/* Kartu Daftar Pengeluaran */}
       <div className="space-y-4">
         <AnimatePresence>
           {expenses.length === 0 ? (
             <div className="bg-white rounded-3xl p-10 text-center border border-gray-100">
               <p className="text-gray-400 mb-4">Belum ada data pengeluaran.</p>
-              <button onClick={() => setIsModalOpen(true)} className="bg-rose-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
+              <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="bg-rose-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
                 + Tambah Budget Pertama
               </button>
             </div>
           ) : (
             expenses.map((item) => {
               const theme = getCardTheme(item.category_id);
+              const selisih = Number(item.estimated_cost) - Number(item.actual_cost);
+              
               return (
                 <motion.div 
                   key={item.id} 
@@ -175,24 +244,30 @@ export default function BudgetPage() {
                     {item.notes && <p className={`text-sm mt-1 font-medium opacity-70 ${theme.text}`}>{item.notes}</p>}
                   </div>
 
-                  {/* Bagian Tengah: Rincian Angka */}
-                  <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-8 w-full md:w-auto">
+                  {/* Bagian Tengah: Rincian Angka (Estimasi, Aktual, Selisih, Terbayar) */}
+                  <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto">
                     <div>
                       <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Estimasi</p>
                       <p className={`font-semibold ${theme.text}`}>Rp {Number(item.estimated_cost).toLocaleString('id-ID')}</p>
                     </div>
                     <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Deal (Realisasi)</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Aktual Budget</p>
                       <p className={`font-extrabold ${theme.text}`}>Rp {Number(item.actual_cost).toLocaleString('id-ID')}</p>
                     </div>
-                    <div className="bg-white/60 px-4 py-2 rounded-xl border border-white/50 shadow-sm">
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60 ${theme.text}`}>Selisih</p>
+                      <p className={`font-bold ${selisih < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {selisih < 0 ? '-Rp ' : '+Rp '} {Math.abs(selisih).toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                    <div className="bg-white/60 px-4 py-2.5 rounded-xl border border-white/50 shadow-sm">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Terbayar</p>
                       <p className="font-extrabold text-rose-700">Rp {Number(item.paid_amount).toLocaleString('id-ID')}</p>
                     </div>
                   </div>
 
                   {/* Bagian Kanan: Status & Aksi */}
-                  <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-gray-200/50 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
+                  <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-gray-200/50 pt-4 md:pt-0 md:pl-6 mt-2 md:mt-0">
                     <span className={`px-4 py-2 rounded-full text-xs font-bold border shadow-sm ${
                       item.payment_status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
                       item.payment_status === 'DP' ? 'bg-amber-100 text-amber-800 border-amber-200' :
@@ -201,13 +276,22 @@ export default function BudgetPage() {
                       {item.payment_status}
                     </span>
                     
-                    <button 
-                      onClick={() => handleDelete(item.id)} 
-                      className="p-2.5 bg-white rounded-full text-gray-400 hover:text-rose-600 shadow-sm hover:shadow transition"
-                      title="Hapus Item Budget"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleEditClick(item)} 
+                        className="p-2.5 bg-white rounded-full text-gray-400 hover:text-blue-600 shadow-sm hover:shadow transition"
+                        title="Edit Item Budget"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(item.id)} 
+                        className="p-2.5 bg-white rounded-full text-gray-400 hover:text-rose-600 shadow-sm hover:shadow transition"
+                        title="Hapus Item Budget"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -216,7 +300,7 @@ export default function BudgetPage() {
         </AnimatePresence>
       </div>
 
-      {/* Advanced Modal (Pop-up Form) - Tetap Sama */}
+      {/* Modal Tambah/Edit */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -224,9 +308,11 @@ export default function BudgetPage() {
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
             >
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <button onClick={resetForm} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
               
-              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">Tambah Detail Budget</h2>
+              <h2 className="text-2xl font-serif italic text-rose-900 mb-6">
+                {editingId ? 'Edit Detail Budget' : 'Tambah Detail Budget'}
+              </h2>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -249,7 +335,7 @@ export default function BudgetPage() {
                     <input type="number" name="estimated_cost" value={formData.estimated_cost} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
                   </div>
                   <div>
-                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Realisasi Biaya / Deal (Rp)</label>
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Aktual Budget (Deal) (Rp)</label>
                     <input type="number" name="actual_cost" value={formData.actual_cost} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
                   </div>
                 </div>
@@ -286,25 +372,13 @@ export default function BudgetPage() {
                 </div>
 
                 <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">
-                  Simpan Detail Budget
+                  {editingId ? 'Simpan Perubahan' : 'Simpan Detail Budget'}
                 </button>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function SummaryCard({ title, amount, icon }: any) {
-  return (
-    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-gray-500 uppercase">{title}</p>
-        {icon}
-      </div>
-      <p className="text-xl font-bold text-[#2C3E50]">Rp {amount.toLocaleString('id-ID')}</p>
     </div>
   );
 }
