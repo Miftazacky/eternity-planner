@@ -136,7 +136,6 @@ export default function SeserahanPage() {
     if (!error) fetchData();
   };
 
-  // Fungsi untuk merotasi tema warna berdasarkan urutan kategori
   const getCategoryTheme = (index: number) => {
     const themes = [
       { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-900', btn: 'bg-rose-100 text-rose-800 hover:bg-rose-200' },
@@ -157,30 +156,40 @@ export default function SeserahanPage() {
 
   return (
     <div className="pb-20 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-[#2C3E50] mb-2 flex items-center gap-3">
-            <Gift className="text-rose-900" size={32} /> Planner Seserahan
+      
+      {/* Banner Header Berwarna (Desain Baru) */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-20 w-40 h-40 bg-rose-500/20 rounded-full blur-3xl -mb-10 pointer-events-none"></div>
+
+        <div className="relative z-10">
+          <span className="inline-block bg-white/20 text-white text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4 backdrop-blur-sm border border-white/20">
+            Modul Hantaran
+          </span>
+          <h1 className="text-3xl md:text-4xl font-serif italic font-semibold mb-2 text-white flex items-center gap-3">
+            <Gift size={32} className="text-rose-300" /> Planner Seserahan
           </h1>
-          <p className="text-gray-500 text-sm">Organisir daftar hantaran, brand, anggaran, dan tautan belanja.</p>
+          <p className="text-rose-100 text-sm font-medium">Organisir daftar hantaran, brand, anggaran, dan tautan belanja.</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="relative z-10 flex flex-wrap items-center gap-3">
           <button
             onClick={() => setIsCategoryModalOpen(true)}
-            className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold transition shadow-sm"
+            className="bg-rose-800/60 border border-rose-400/30 text-white hover:bg-rose-800 px-5 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition backdrop-blur-sm"
           >
             <Plus size={18} /> Tambah Kategori
           </button>
           <button
             onClick={() => openAddItemModal()}
-            className="bg-rose-900 hover:bg-rose-950 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold transition shadow-lg shadow-rose-900/20"
+            className="bg-white text-rose-900 hover:bg-rose-50 px-5 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition shadow-lg"
           >
             <Plus size={18} /> Tambah Item
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Metric Cards Top (Dengan Gradasi Lembut) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -220,8 +229,6 @@ export default function SeserahanPage() {
             const catDoneCount = categoryItems.filter((i) => i.status === 'Done').length;
             const isAllDone = categoryItems.length > 0 && catDoneCount === categoryItems.length;
             const isOpen = openCardIds.includes(cat.id);
-            
-            // Ambil tema warna berdasarkan urutan index kategori
             const theme = getCategoryTheme(index);
 
             return (
@@ -374,7 +381,7 @@ export default function SeserahanPage() {
         )}
       </div>
 
-      {/* Modal 1: Tambah Kategori Baru */}
+      {/* Modal 1 & 2 tetap sama (Pop-up Tambah/Edit) */}
       <AnimatePresence>
         {isCategoryModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -396,7 +403,6 @@ export default function SeserahanPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal 2: Tambah / Edit Item */}
       <AnimatePresence>
         {isItemModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -406,7 +412,6 @@ export default function SeserahanPage() {
             >
               <button onClick={() => setIsItemModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
               <h2 className="text-2xl font-serif italic text-rose-900 mb-6">{editingItemId ? 'Edit Item Seserahan' : 'Tambah Item Seserahan'}</h2>
-
               <form onSubmit={handleSaveItem} className="space-y-4">
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kategori *</label>
@@ -415,7 +420,6 @@ export default function SeserahanPage() {
                     {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Barang *</label>
@@ -426,7 +430,6 @@ export default function SeserahanPage() {
                     <input type="text" placeholder="Contoh: Wardah" value={itemForm.brand} onChange={(e) => setItemForm({ ...itemForm, brand: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Status</label>
@@ -445,12 +448,10 @@ export default function SeserahanPage() {
                     <input type="number" value={itemForm.actual_amount} onChange={(e) => setItemForm({ ...itemForm, actual_amount: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Link Pembelian</label>
                   <input type="text" placeholder="https://s.shopee.co.id/..." value={itemForm.purchase_link} onChange={(e) => setItemForm({ ...itemForm, purchase_link: e.target.value })} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
                 </div>
-
                 <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">
                   {editingItemId ? 'Simpan Perubahan' : 'Simpan Item'}
                 </button>

@@ -98,19 +98,32 @@ export default function BudgetPage() {
 
   return (
     <div className="pb-20 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-[#2C3E50] mb-2">Budget Planner</h1>
-          <p className="text-gray-500 text-sm">Pantau estimasi, realisasi pembayaran, dan status pelunasan.</p>
+      
+      {/* Banner Header Berwarna (Desain Baru) */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-20 w-40 h-40 bg-rose-500/20 rounded-full blur-3xl -mb-10 pointer-events-none"></div>
+
+        <div className="relative z-10">
+          <span className="inline-block bg-white/20 text-white text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4 backdrop-blur-sm border border-white/20">
+            Modul Keuangan
+          </span>
+          <h1 className="text-3xl md:text-4xl font-serif italic font-semibold mb-2 text-white flex items-center gap-3">
+            <Wallet size={32} className="text-rose-300" /> Budget Planner
+          </h1>
+          <p className="text-rose-100 text-sm font-medium">Pantau estimasi, realisasi pembayaran, dan status pelunasan.</p>
         </div>
+
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-rose-900 hover:bg-rose-950 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium transition shadow-lg shadow-rose-900/20"
+          className="relative z-10 bg-white text-rose-900 hover:bg-rose-50 px-6 py-3.5 rounded-xl flex items-center gap-2 text-sm font-bold transition shadow-lg"
         >
           <Plus size={18} /> Tambah Detail Budget
         </button>
-      </div>
+      </motion.div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

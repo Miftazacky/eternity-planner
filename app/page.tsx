@@ -50,7 +50,7 @@ export default function DashboardHome() {
             Wedding Planner
           </span>
           <h1 className="text-4xl md:text-5xl font-serif italic font-semibold mb-4 text-white">
-            Elsa Anindita & Raphael Mahesa
+            Kimprut Lucknut & Tata Ganteng
           </h1>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-rose-100 text-sm font-medium">
             <div className="flex items-center gap-2">
