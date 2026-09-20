@@ -12,6 +12,9 @@ export default function ChecklistPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [openCardCategories, setOpenCardCategories] = useState<string[]>([]);
 
+  // State untuk Kategori Kustom
+  const [customCategory, setCustomCategory] = useState('');
+
   // Form State
   const [formData, setFormData] = useState({
     title: '',
@@ -49,6 +52,7 @@ export default function ChecklistPage() {
 
   const resetForm = () => {
     setFormData({ title: '', category: 'KUA', due_date: '', vendor_link: '', tempat: '' });
+    setCustomCategory(''); // Reset input kustom
     setEditingId(null);
     setIsModalOpen(false);
   };
@@ -67,17 +71,37 @@ export default function ChecklistPage() {
 
   const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Jika user mengganti kategori selain "custom", bersihkan field custom
+    if (e.target.name === 'category' && e.target.value !== 'custom') {
+      setCustomCategory('');
+    }
   };
 
   const handleSaveChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title) return;
 
+    // Menentukan kategori mana yang disimpan (Bawaan atau Kustom)
+    const finalCategory = formData.category === 'custom' ? customCategory : formData.category;
+
+    if (!finalCategory) {
+      alert('Nama kategori baru tidak boleh kosong!');
+      return;
+    }
+
+    const payloadToSave = {
+      title: formData.title,
+      category: finalCategory,
+      due_date: formData.due_date,
+      vendor_link: formData.vendor_link,
+      tempat: formData.tempat
+    };
+
     if (editingId) {
-      const { error } = await supabase.from('checklists').update(formData).eq('id', editingId);
+      const { error } = await supabase.from('checklists').update(payloadToSave).eq('id', editingId);
       if (!error) { resetForm(); fetchChecklists(); }
     } else {
-      const { error } = await supabase.from('checklists').insert([{ ...formData, is_completed: false }]);
+      const { error } = await supabase.from('checklists').insert([{ ...payloadToSave, is_completed: false }]);
       if (!error) { resetForm(); fetchChecklists(); }
     }
   };
@@ -100,6 +124,10 @@ export default function ChecklistPage() {
     acc[item.category].push(item);
     return acc;
   }, {});
+
+  // Menggabungkan Kategori Default dengan Kategori yang ada di Database
+  const defaultCategories = ['KUA', 'MUA', 'Mahar dan Seserahan', 'Venue/lokasi', 'Dokumentasi', 'Pengisi Acara', 'Makanan', 'Undangan & Souvenir', 'Lain-lain'];
+  const dynamicCategories = Array.from(new Set([...defaultCategories, ...checklists.map(c => c.category)]));
 
   const getCategoryTheme = (index: number) => {
     const themes = [
@@ -271,20 +299,31 @@ export default function ChecklistPage() {
                   <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Contoh: Rias pengantin" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
                 </div>
 
-                {/* Dropdown Kategori disesuaikan dengan Excel Anda */}
+                {/* Dropdown Kategori dengan Fitur Kategori Kustom */}
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kategori *</label>
                   <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
-                    <option value="KUA">KUA</option>
-                    <option value="MUA">MUA</option>
-                    <option value="Mahar dan Seserahan">Mahar dan Seserahan</option>
-                    <option value="Venue/lokasi">Venue/lokasi</option>
-                    <option value="Dokumentasi">Dokumentasi</option>
-                    <option value="Pengisi Acara">Pengisi Acara</option>
-                    <option value="Makanan">Makanan</option>
-                    <option value="Undangan & Souvenir">Undangan & Souvenir</option>
-                    <option value="Lain-lain">Lain-lain</option>
+                    {dynamicCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                    <option value="custom" className="font-bold text-rose-600">+ Tambah Kategori Baru...</option>
                   </select>
+                  
+                  {/* Kotak Input Muncul Jika Memilih "+ Tambah Kategori Baru..." */}
+                  <AnimatePresence>
+                    {formData.category === 'custom' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2">
+                        <input 
+                          type="text" 
+                          placeholder="Ketik nama kategori baru..." 
+                          value={customCategory} 
+                          onChange={(e) => setCustomCategory(e.target.value)} 
+                          className="w-full border border-rose-300 rounded-xl p-3 text-sm focus:outline-rose-500 bg-rose-50/50" 
+                          required 
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
