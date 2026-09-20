@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Trash2, CheckCircle2, ListTodo, ChevronDown, ChevronUp, MapPin, Link2, Edit2 } from 'lucide-react';
+import { Plus, X, Trash2, CheckCircle2, ListTodo, ChevronDown, ChevronUp, MapPin, Link2, Edit2, Store, Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -13,13 +13,14 @@ export default function ChecklistPage() {
   const [openCardCategories, setOpenCardCategories] = useState<string[]>([]);
   const [customCategory, setCustomCategory] = useState('');
 
-  // Menarik kategori dinamis langsung dari data yang ada di database
   const dynamicCategories = Array.from(new Set(checklists.map(c => c.category)));
 
   const [formData, setFormData] = useState({
     title: '',
     category: '', 
     due_date: '',
+    vendor_name: '',
+    contact: '',
     vendor_link: '',
     tempat: ''
   });
@@ -50,9 +51,8 @@ export default function ChecklistPage() {
   };
 
   const resetForm = () => {
-    // Default form ke kategori pertama yang ada, atau langsung 'custom' jika kosong
     const firstCat = dynamicCategories.length > 0 ? dynamicCategories[0] : 'custom';
-    setFormData({ title: '', category: firstCat as string, due_date: '', vendor_link: '', tempat: '' });
+    setFormData({ title: '', category: firstCat as string, due_date: '', vendor_name: '', contact: '', vendor_link: '', tempat: '' });
     setCustomCategory('');
     setEditingId(null);
     setIsModalOpen(false);
@@ -63,6 +63,8 @@ export default function ChecklistPage() {
       title: item.title,
       category: item.category,
       due_date: item.due_date || '',
+      vendor_name: item.vendor_name || '',
+      contact: item.contact || '',
       vendor_link: item.vendor_link || '',
       tempat: item.tempat || ''
     });
@@ -92,6 +94,8 @@ export default function ChecklistPage() {
       title: formData.title,
       category: finalCategory,
       due_date: formData.due_date,
+      vendor_name: formData.vendor_name,
+      contact: formData.contact,
       vendor_link: formData.vendor_link,
       tempat: formData.tempat
     };
@@ -117,7 +121,6 @@ export default function ChecklistPage() {
     fetchChecklists();
   };
 
-  // FUNGSI BARU: Hapus Seluruh Kategori beserta isinya
   const handleDeleteCategory = async (categoryName: string) => {
     if (!confirm(`PERINGATAN: Hapus kategori "${categoryName}" beserta SELURUH TUGAS di dalamnya?`)) return;
     await supabase.from('checklists').delete().eq('category', categoryName);
@@ -217,7 +220,6 @@ export default function ChecklistPage() {
                       </div>
                     </div>
                     
-                    {/* Aksi Kanan Header */}
                     <div className="flex items-center gap-4">
                       <p className={`text-sm font-bold ${isAllDone ? 'text-emerald-700' : theme.text} opacity-80 hidden md:block`}>{catDoneCount} / {items.length} Selesai</p>
                       <button 
@@ -242,7 +244,7 @@ export default function ChecklistPage() {
                               <h3 className={`font-bold text-lg mb-2 ${item.is_completed ? 'line-through text-gray-400' : 'text-[#2C3E50]'}`}>
                                 {item.title}
                               </h3>
-                              <div className="flex flex-wrap items-center gap-4">
+                              <div className="flex flex-wrap items-center gap-3">
                                 {item.due_date && (
                                   <span className="text-xs font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100">
                                     Tgl: {new Date(item.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -253,9 +255,19 @@ export default function ChecklistPage() {
                                     <MapPin size={12}/> {item.tempat}
                                   </span>
                                 )}
+                                {item.vendor_name && (
+                                  <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100 flex items-center gap-1">
+                                    <Store size={12}/> {item.vendor_name}
+                                  </span>
+                                )}
+                                {item.contact && (
+                                  <span className="text-xs font-semibold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100 flex items-center gap-1">
+                                    <Phone size={12}/> {item.contact}
+                                  </span>
+                                )}
                                 {item.vendor_link && (
-                                  <a href={item.vendor_link.startsWith('http') ? item.vendor_link : `https://${item.vendor_link}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 hover:bg-emerald-100 flex items-center gap-1 transition">
-                                    <Link2 size={12}/> Vendor / Link
+                                  <a href={item.vendor_link.startsWith('http') ? item.vendor_link : `https://${item.vendor_link}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 hover:bg-emerald-200 flex items-center gap-1 transition">
+                                    <Link2 size={12}/> Link Web
                                   </a>
                                 )}
                               </div>
@@ -311,7 +323,7 @@ export default function ChecklistPage() {
                   <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Contoh: Rias pengantin" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
                 </div>
 
-                {/* Dropdown Kategori Bersih (Hanya dari DB) */}
+                {/* Dropdown Kategori Bersih */}
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kategori *</label>
                   <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
@@ -321,7 +333,6 @@ export default function ChecklistPage() {
                     <option value="custom" className="font-bold text-rose-600">+ Tambah Kategori Baru...</option>
                   </select>
                   
-                  {/* Form input kategori baru */}
                   <AnimatePresence>
                     {formData.category === 'custom' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2">
@@ -349,9 +360,21 @@ export default function ChecklistPage() {
                   </div>
                 </div>
 
+                {/* Input Vendor & Kontak (Terpisah) */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Vendor</label>
+                    <input type="text" name="vendor_name" value={formData.vendor_name} onChange={handleChange} placeholder="MUA Studio..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Kontak / No HP</label>
+                    <input type="text" name="contact" value={formData.contact} onChange={handleChange} placeholder="0812-XXXX..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Vendor / Kontak / Link</label>
-                  <input type="text" name="vendor_link" value={formData.vendor_link} onChange={handleChange} placeholder="Nama vendor atau link web..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Link (Web / Instagram)</label>
+                  <input type="text" name="vendor_link" value={formData.vendor_link} onChange={handleChange} placeholder="https://instagram.com/..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" />
                 </div>
                 
                 <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">
