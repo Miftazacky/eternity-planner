@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Plus, X, Trash2, CheckCircle2, ChevronDown, ChevronUp, Edit2, CircleDot, Clock } from 'lucide-react';
+import { Map, Plus, X, Trash2, CheckCircle2, ChevronDown, ChevronUp, Edit2, CircleDot, Paperclip, Loader2, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -11,13 +11,19 @@ export default function PanduanPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // State untuk Upload File
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   // State untuk Kategori/Fase Kustom
   const [customPhase, setCustomPhase] = useState('');
 
   const [formData, setFormData] = useState({
     phase: '',
     task_name: '',
-    notes: ''
+    notes: '',
+    file_url: '',
+    file_name: ''
   });
 
   const fetchTasks = async () => {
@@ -34,18 +40,16 @@ export default function PanduanPage() {
     fetchTasks();
   }, []);
 
-  // Membuat daftar fase default + fase dinamis dari database
   const defaultPhases = ['H-6 Bulan', 'H-5 Bulan', 'H-4 Bulan', 'H-3 Bulan', 'H-2 Bulan', 'H-1 Bulan', 'Minggu Acara', 'Hari H'];
   const dynamicPhases = Array.from(new Set([...defaultPhases, ...tasks.map(t => t.phase)]));
 
-  // Buka semua fase secara default
   const [openPhases, setOpenPhases] = useState<string[]>(dynamicPhases);
 
   useEffect(() => {
     if (tasks.length > 0) {
       setOpenPhases(Array.from(new Set([...defaultPhases, ...tasks.map(t => t.phase)])));
     }
-  }, [tasks.length]); // Hanya update saat jumlah task berubah
+  }, [tasks.length]);
 
   const togglePhaseCard = (phase: string) => {
     setOpenPhases(prev => 
@@ -55,9 +59,10 @@ export default function PanduanPage() {
 
   const resetForm = () => {
     const firstPhase = dynamicPhases.length > 0 ? dynamicPhases[0] : 'custom';
-    setFormData({ phase: firstPhase, task_name: '', notes: '' });
+    setFormData({ phase: firstPhase, task_name: '', notes: '', file_url: '', file_name: '' });
     setCustomPhase('');
     setEditingId(null);
+    setSelectedFile(null);
     setIsModalOpen(false);
   };
 
@@ -65,9 +70,12 @@ export default function PanduanPage() {
     setFormData({
       phase: item.phase,
       task_name: item.task_name,
-      notes: item.notes || ''
+      notes: item.notes || '',
+      file_url: item.file_url || '',
+      file_name: item.file_name || ''
     });
     setEditingId(item.id);
+    setSelectedFile(null);
     setIsModalOpen(true);
   };
 
@@ -78,21 +86,57 @@ export default function PanduanPage() {
     }
   };
 
+  const handleFileChange = (e: any) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.task_name) return;
 
     const finalPhase = formData.phase === 'custom' ? customPhase : formData.phase;
-
     if (!finalPhase) {
       alert('Nama fase waktu tidak boleh kosong!');
       return;
     }
 
+    setIsUploading(true);
+    let newFileUrl = formData.file_url;
+    let newFileName = formData.file_name;
+
+    // Logika Upload File ke Supabase Storage (Jika ada file yang dipilih)
+    if (selectedFile) {
+      // Bikin nama file unik agar tidak bentrok
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('dokumen_panduan')
+        .upload(fileName, selectedFile);
+
+      if (error) {
+        alert('Gagal upload dokumen: Pastikan nama bucket "dokumen_panduan" sudah dibuat dan public.');
+        setIsUploading(false);
+        return;
+      }
+
+      // Ambil URL Publik
+      const { data: publicData } = supabase.storage
+        .from('dokumen_panduan')
+        .getPublicUrl(fileName);
+
+      newFileUrl = publicData.publicUrl;
+      newFileName = selectedFile.name;
+    }
+
     const payload = {
       phase: finalPhase,
       task_name: formData.task_name,
-      notes: formData.notes
+      notes: formData.notes,
+      file_url: newFileUrl,
+      file_name: newFileName
     };
 
     if (editingId) {
@@ -102,6 +146,8 @@ export default function PanduanPage() {
       const { error } = await supabase.from('panduan').insert([{ ...payload, is_completed: false }]);
       if (!error) { resetForm(); fetchTasks(); }
     }
+    
+    setIsUploading(false);
   };
 
   const toggleCompletion = async (id: string, currentStatus: boolean) => {
@@ -110,8 +156,15 @@ export default function PanduanPage() {
     fetchTasks();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, fileUrl: string | null) => {
     if (!confirm('Hapus agenda ini?')) return;
+    
+    // Opsi lanjutan: Menghapus file fisik di storage (tidak wajib tapi bagus untuk kebersihan)
+    if (fileUrl) {
+      const fileName = fileUrl.split('/').pop();
+      if (fileName) await supabase.storage.from('dokumen_panduan').remove([fileName]);
+    }
+
     await supabase.from('panduan').delete().eq('id', id);
     fetchTasks();
   };
@@ -142,7 +195,7 @@ export default function PanduanPage() {
   return (
     <div className="pb-20 max-w-5xl mx-auto">
       
-      {/* Banner Header Berwarna */}
+      {/* Banner Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-rose-900 to-rose-950 rounded-[2.5rem] p-8 md:p-10 mb-8 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
@@ -157,7 +210,7 @@ export default function PanduanPage() {
           <h1 className="text-3xl md:text-4xl font-serif italic font-semibold mb-2 text-white flex items-center gap-3">
             <Map size={32} className="text-rose-300" /> Timeline Persiapan
           </h1>
-          <p className="text-rose-100 text-sm font-medium">Peta perjalanan dan jadwal target Anda menuju Hari Bahagia.</p>
+          <p className="text-rose-100 text-sm font-medium">Peta perjalanan, jadwal target, dan manajemen dokumen Anda.</p>
         </div>
 
         <button 
@@ -193,15 +246,12 @@ export default function PanduanPage() {
             const isOpen = openPhases.includes(phaseName);
             const theme = getPhaseTheme(index);
 
-            // Tampilkan fase default meskipun kosong, ATAU fase dinamis yang ada isinya
             if (phaseTasks.length === 0 && !defaultPhases.includes(phaseName)) return null;
 
             return (
               <motion.div 
                 key={phaseName}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.95 }}
                 className="relative"
               >
                 {/* TITIK TIMELINE (TIMELINE DOT) */}
@@ -217,9 +267,7 @@ export default function PanduanPage() {
                         {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                       </button>
                       <div className="flex items-center gap-3">
-                        <h2 className={`text-xl font-extrabold tracking-wide uppercase ${isAllDone ? 'text-emerald-900' : theme.text}`}>
-                          {phaseName}
-                        </h2>
+                        <h2 className={`text-xl font-extrabold tracking-wide uppercase ${isAllDone ? 'text-emerald-900' : theme.text}`}>{phaseName}</h2>
                         {isAllDone && <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1 shadow-sm hidden md:flex"><CheckCircle2 size={14} /> Tuntas</span>}
                       </div>
                     </div>
@@ -230,13 +278,7 @@ export default function PanduanPage() {
                       ) : (
                         <p className="text-xs font-medium text-gray-400 hidden md:block">Belum ada agenda</p>
                       )}
-                      <button 
-                        onClick={() => handleDeletePhase(phaseName)}
-                        className={`p-2 rounded-xl transition ${isAllDone ? 'text-emerald-600 hover:bg-emerald-200' : `${theme.text} opacity-50 hover:opacity-100 hover:bg-white/50`}`}
-                        title="Hapus Fase Timeline"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <button onClick={() => handleDeletePhase(phaseName)} className={`p-2 rounded-xl transition ${isAllDone ? 'text-emerald-600 hover:bg-emerald-200' : `${theme.text} opacity-50 hover:opacity-100 hover:bg-white/50`}`} title="Hapus Fase Timeline"><Trash2 size={18} /></button>
                     </div>
                   </div>
 
@@ -257,16 +299,36 @@ export default function PanduanPage() {
                             <div key={item.id} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:shadow-md transition">
                               
                               <div className="flex-1 flex items-start gap-3">
-                                {/* Judul & Catatan Detail */}
-                                <div className="mt-1">
-                                  <h3 className={`font-bold text-base md:text-lg mb-1 ${item.is_completed ? 'line-through text-gray-400' : 'text-[#2C3E50]'}`}>
+                                {/* Checkbox Icon */}
+                                <button onClick={() => toggleCompletion(item.id, item.is_completed)} className={`mt-1 transition ${item.is_completed ? 'text-emerald-500' : 'text-gray-300 hover:text-rose-400'}`}>
+                                  {item.is_completed ? <CheckCircle2 size={24} className="fill-emerald-100"/> : <CircleDot size={24} />}
+                                </button>
+                                
+                                <div className="mt-1 w-full">
+                                  <h3 className={`font-bold text-base md:text-lg mb-2 ${item.is_completed ? 'line-through text-gray-400' : 'text-[#2C3E50]'}`}>
                                     {item.task_name}
                                   </h3>
-                                  {item.notes && (
-                                    <div className="text-xs font-medium text-gray-500 bg-gray-50 inline-block px-3 py-1.5 rounded-lg border border-gray-200">
-                                      📝 {item.notes}
-                                    </div>
-                                  )}
+                                  
+                                  <div className="flex flex-col gap-2 w-full">
+                                    {item.notes && (
+                                      <p className="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 w-fit">
+                                        📝 {item.notes}
+                                      </p>
+                                    )}
+
+                                    {/* Tombol Lihat/Download Dokumen */}
+                                    {item.file_url && (
+                                      <a 
+                                        href={item.file_url} 
+                                        target="_blank" 
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-2 rounded-lg transition w-fit"
+                                      >
+                                        <FileText size={14} />
+                                        {item.file_name || 'Lihat Dokumen'}
+                                      </a>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 
@@ -287,7 +349,7 @@ export default function PanduanPage() {
                                   Edit
                                 </button>
                                 <button 
-                                  onClick={() => handleDelete(item.id)}
+                                  onClick={() => handleDelete(item.id, item.file_url)}
                                   className="w-full px-5 py-2.5 rounded-full text-sm font-bold bg-white text-rose-600 border border-gray-200 hover:bg-rose-50 shadow-sm transition-all text-center"
                                 >
                                   Hapus
@@ -311,14 +373,14 @@ export default function PanduanPage() {
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
-              <button onClick={resetForm} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <button onClick={resetForm} className="disabled:opacity-50 absolute top-6 right-6 text-gray-400 hover:text-gray-600" disabled={isUploading}><X size={20} /></button>
               <h2 className="text-2xl font-serif italic text-rose-900 mb-6">{editingId ? 'Edit Agenda' : 'Tambah Agenda'}</h2>
               
               <form onSubmit={handleSaveTask} className="space-y-4">
-                {/* Dropdown Kategori dengan Fitur Custom */}
+                {/* Dropdown Kategori */}
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Fase / Target Waktu *</label>
-                  <select name="phase" value={formData.phase} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50">
+                  <select name="phase" value={formData.phase} onChange={handleChange} className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" disabled={isUploading}>
                     {dynamicPhases.map(p => <option key={p} value={p}>{p}</option>)}
                     <option value="custom" className="font-bold text-rose-600">+ Tambah Fase Baru (Custom)...</option>
                   </select>
@@ -326,14 +388,7 @@ export default function PanduanPage() {
                   <AnimatePresence>
                     {formData.phase === 'custom' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2">
-                        <input 
-                          type="text" 
-                          placeholder="Cth: H-7 Bulan, Minggu Kedua..." 
-                          value={customPhase} 
-                          onChange={(e) => setCustomPhase(e.target.value)} 
-                          className="w-full border border-rose-300 rounded-xl p-3 text-sm focus:outline-rose-500 bg-rose-50/50" 
-                          required 
-                        />
+                        <input type="text" placeholder="Cth: H-7 Bulan..." value={customPhase} onChange={(e) => setCustomPhase(e.target.value)} className="w-full border border-rose-300 rounded-xl p-3 text-sm focus:outline-rose-500 bg-rose-50/50" required disabled={isUploading} />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -341,16 +396,37 @@ export default function PanduanPage() {
 
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Nama Agenda / Tugas *</label>
-                  <input type="text" name="task_name" value={formData.task_name} onChange={handleChange} placeholder="Cth: Tentukan tanggal pernikahan" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus />
+                  <input type="text" name="task_name" value={formData.task_name} onChange={handleChange} placeholder="Cth: Tentukan tanggal pernikahan" className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400" required autoFocus disabled={isUploading} />
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Detail / Catatan (Opsional)</label>
-                  <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} placeholder="Cth: Diskusikan dengan keluarga besar terkait adat dan venue..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" />
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-1">Catatan Tambahan (Opsional)</label>
+                  <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} placeholder="Cth: Diskusikan dengan keluarga besar..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-rose-400 bg-gray-50/50" disabled={isUploading} />
+                </div>
+
+                {/* Input File Dokumen */}
+                <div className="pt-2">
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">Lampirkan Dokumen (PDF, JPG, Word)</label>
+                  
+                  {formData.file_name && !selectedFile && (
+                    <div className="mb-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 flex items-center justify-between">
+                      <span className="truncate pr-2">File saat ini: {formData.file_name}</span>
+                      <button type="button" onClick={() => setFormData({...formData, file_name: '', file_url: ''})} className="text-rose-500 hover:text-rose-700 font-bold" title="Hapus File Saat Ini"><Trash2 size={14}/></button>
+                    </div>
+                  )}
+
+                  <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition cursor-pointer">
+                    <input type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isUploading} />
+                    <div className="flex flex-col items-center justify-center gap-1 text-gray-500">
+                      <Paperclip size={20} className="mb-1 text-rose-400" />
+                      <span className="text-sm font-semibold">{selectedFile ? selectedFile.name : 'Klik atau seret file ke sini'}</span>
+                      <span className="text-xs">Max. 5MB (Opsional)</span>
+                    </div>
+                  </div>
                 </div>
                 
-                <button type="submit" className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6">
-                  {editingId ? 'Simpan Perubahan' : 'Simpan Agenda'}
+                <button type="submit" disabled={isUploading} className="w-full bg-rose-900 text-white py-3.5 rounded-xl font-medium hover:bg-rose-950 transition mt-6 flex items-center justify-center gap-2 disabled:bg-rose-900/60 disabled:cursor-not-allowed">
+                  {isUploading ? <><Loader2 size={18} className="animate-spin" /> Mengunggah & Menyimpan...</> : (editingId ? 'Simpan Perubahan' : 'Simpan Agenda')}
                 </button>
               </form>
             </motion.div>
