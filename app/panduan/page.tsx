@@ -37,7 +37,6 @@ export default function DokumenPage() {
     fetchData();
   }, []);
 
-  // Kategori Default sesuai Screenshot Excel
   const defaultCategories = ['Calon Pengantin Wanita', 'Calon Pengantin Pria', 'Dokumen Bersama / KUA'];
   const dynamicCategories = Array.from(new Set([...defaultCategories, ...documents.map(d => d.category)]));
 
@@ -169,7 +168,6 @@ export default function DokumenPage() {
     fetchData();
   };
 
-  // Tema khusus untuk Dokumen (Lebih ke warna Biru/Resmi)
   const getCategoryTheme = (index: number) => {
     const themes = [
       { bg: 'bg-slate-50', border: 'border-slate-200 border-l-slate-600', text: 'text-slate-900', btn: 'bg-slate-200 text-slate-800 hover:bg-slate-300' },
@@ -320,7 +318,7 @@ export default function DokumenPage() {
                               </div>
                             </div>
 
-                            {/* 3 Tombol Aksi (Tandai Selesai, Edit, Hapus) */}
+                            {/* 3 Tombol Aksi */}
                             <div className="flex flex-col gap-2 min-w-[140px] items-stretch w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
                               <button 
                                 onClick={() => toggleCompletion(item.id, item.is_completed)}
@@ -349,11 +347,10 @@ export default function DokumenPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
       {/* Modal Tambah/Edit Dokumen */}
