@@ -200,7 +200,7 @@ export default function DokumenPage() {
             Modul Administratif
           </span>
           <h1 className="text-3xl md:text-4xl font-serif italic font-semibold mb-2 text-white flex items-center gap-3">
-            <FolderOpen size={32} className="text-blue-300" /> Master Dokumen Legal
+            <FolderOpen size={32} className="text-blue-300" /> Dokumen Administrasi
           </h1>
           <p className="text-slate-200 text-sm font-medium">Kelola persyaratan nikah, surat pengantar KUA, dan lampiran file digital.</p>
         </div>
