@@ -119,16 +119,35 @@ export default function DashboardPage() {
     warningType = "warning";
   }
 
-  // Data untuk Pie Chart Seserahan
+  // --- DATA UNTUK PIE CHARTS (6 MODUL) ---
   const dataSeserahan = [
-    { name: 'Selesai Dibeli', value: stats.seserahan.done, color: '#10b981' }, // emerald-500
-    { name: 'Belum Selesai', value: stats.seserahan.total - stats.seserahan.done, color: '#f59e0b' }, // amber-500
+    { name: 'Selesai Dibeli', value: stats.seserahan.done, color: '#10b981' }, 
+    { name: 'Belum Selesai', value: stats.seserahan.total - stats.seserahan.done, color: '#f59e0b' },
   ];
 
-  // Data untuk Pie Chart Lunas Budget
   const dataBudgetLunas = [
-    { name: 'Vendor Lunas', value: stats.budget.paidItems, color: '#3b82f6' }, // blue-500
-    { name: 'Belum Lunas/DP', value: stats.budget.totalItems - stats.budget.paidItems, color: '#ef4444' }, // red-500
+    { name: 'Vendor Lunas', value: stats.budget.paidItems, color: '#3b82f6' }, 
+    { name: 'Belum Lunas/DP', value: stats.budget.totalItems - stats.budget.paidItems, color: '#ef4444' },
+  ];
+
+  const dataChecklist = [
+    { name: 'Selesai', value: stats.checklist.done, color: '#e11d48' }, // rose-600
+    { name: 'Belum', value: stats.checklist.total - stats.checklist.done, color: '#fda4af' }, // rose-300
+  ];
+
+  const dataDokumen = [
+    { name: 'Berkas Siap', value: stats.dokumen.done, color: '#059669' }, // emerald-600
+    { name: 'Belum Lengkap', value: stats.dokumen.total - stats.dokumen.done, color: '#6ee7b7' }, // emerald-300
+  ];
+
+  const dataPrewedding = [
+    { name: 'Agenda Selesai', value: stats.prewedding.done, color: '#ea580c' }, // orange-600
+    { name: 'Proses/Belum', value: stats.prewedding.total - stats.prewedding.done, color: '#fdba74' }, // orange-300
+  ];
+
+  const dataTamu = [
+    { name: 'RSVP Hadir', value: stats.tamu.hadirPax, color: '#7c3aed' }, // violet-600
+    { name: 'Belum/Batal', value: stats.tamu.totalPax - stats.tamu.hadirPax, color: '#c4b5fd' }, // violet-300
   ];
 
   return (
@@ -208,93 +227,57 @@ export default function DashboardPage() {
       {/* 4. DETAIL PROGRES BAR & WIDGET SAMPING */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Kolom Kiri: Progress Tracker Besar (Sekarang dengan Dokumen & Prewed) */}
+        {/* Kolom Kiri: Progress Tracker Besar */}
         <div className="md:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
           <h2 className="text-xl font-bold text-[#2C3E50] mb-8 flex items-center gap-2"><ListTodo size={24} className="text-rose-900" /> Progres Utama Persiapan</h2>
           
           <div className="space-y-6">
-            {/* Checklist */}
             <div className="group">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-rose-700 transition">Master Checklist</h4>
-                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.checklist.done} dari {stats.checklist.total} tugas selesai</p>
-                </div>
+                <div><h4 className="font-bold text-sm text-gray-700 group-hover:text-rose-700 transition">Master Checklist</h4><p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.checklist.done} dari {stats.checklist.total} tugas selesai</p></div>
                 <span className="font-extrabold text-rose-700 text-lg">{checklistPct}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${checklistPct}%` }} transition={{ duration: 1, delay: 0.1 }} className="h-full bg-rose-500 rounded-full" />
-              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${checklistPct}%` }} transition={{ duration: 1, delay: 0.1 }} className="h-full bg-rose-500 rounded-full" /></div>
             </div>
 
-            {/* Dokumen Legal */}
             <div className="group">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-emerald-700 transition">Dokumen Administratif</h4>
-                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.dokumen.done} dari {stats.dokumen.total} berkas siap</p>
-                </div>
+                <div><h4 className="font-bold text-sm text-gray-700 group-hover:text-emerald-700 transition">Dokumen Administratif</h4><p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.dokumen.done} dari {stats.dokumen.total} berkas siap</p></div>
                 <span className="font-extrabold text-emerald-700 text-lg">{dokumenPct}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${dokumenPct}%` }} transition={{ duration: 1, delay: 0.2 }} className="h-full bg-emerald-500 rounded-full" />
-              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${dokumenPct}%` }} transition={{ duration: 1, delay: 0.2 }} className="h-full bg-emerald-500 rounded-full" /></div>
             </div>
 
-            {/* Prewedding */}
             <div className="group">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-orange-700 transition">Kesiapan Prewedding</h4>
-                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.prewedding.done} dari {stats.prewedding.total} persiapan selesai</p>
-                </div>
+                <div><h4 className="font-bold text-sm text-gray-700 group-hover:text-orange-700 transition">Kesiapan Prewedding</h4><p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.prewedding.done} dari {stats.prewedding.total} persiapan selesai</p></div>
                 <span className="font-extrabold text-orange-700 text-lg">{prewedPct}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${prewedPct}%` }} transition={{ duration: 1, delay: 0.3 }} className="h-full bg-orange-500 rounded-full" />
-              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${prewedPct}%` }} transition={{ duration: 1, delay: 0.3 }} className="h-full bg-orange-500 rounded-full" /></div>
             </div>
 
-            {/* Budget Usage */}
             <div className="group">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-blue-700 transition">Konsumsi Budget</h4>
-                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">Rp {(stats.budget.actual / 1000000).toFixed(1)}Jt / Rp {(stats.budget.pagu / 1000000).toFixed(1)}Jt</p>
-                </div>
+                <div><h4 className="font-bold text-sm text-gray-700 group-hover:text-blue-700 transition">Konsumsi Budget</h4><p className="text-[10px] font-medium text-gray-400 mt-0.5">Rp {(stats.budget.actual / 1000000).toFixed(1)}Jt / Rp {(stats.budget.pagu / 1000000).toFixed(1)}Jt</p></div>
                 <span className={`font-extrabold text-lg ${budgetPct > 100 ? 'text-rose-600' : 'text-blue-700'}`}>{budgetPct}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${budgetPct > 100 ? 100 : budgetPct}%` }} transition={{ duration: 1, delay: 0.4 }} className={`h-full rounded-full ${budgetPct > 100 ? 'bg-rose-500' : 'bg-blue-500'}`} />
-              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${budgetPct > 100 ? 100 : budgetPct}%` }} transition={{ duration: 1, delay: 0.4 }} className={`h-full rounded-full ${budgetPct > 100 ? 'bg-rose-500' : 'bg-blue-500'}`} /></div>
             </div>
 
-            {/* Hantaran / Seserahan */}
             <div className="group">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-amber-700 transition">Barang Seserahan</h4>
-                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.seserahan.done} dari {stats.seserahan.total} barang sudah dibeli</p>
-                </div>
+                <div><h4 className="font-bold text-sm text-gray-700 group-hover:text-amber-700 transition">Barang Seserahan</h4><p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.seserahan.done} dari {stats.seserahan.total} barang sudah dibeli</p></div>
                 <span className="font-extrabold text-amber-700 text-lg">{seserahanPct}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${seserahanPct}%` }} transition={{ duration: 1, delay: 0.5 }} className="h-full bg-amber-500 rounded-full" />
-              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${seserahanPct}%` }} transition={{ duration: 1, delay: 0.5 }} className="h-full bg-amber-500 rounded-full" /></div>
             </div>
             
-            {/* Tamu / RSVP */}
             <div className="group">
               <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-purple-700 transition">Rasio Kehadiran (RSVP)</h4>
-                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.tamu.hadirPax} pax hadir dari {stats.tamu.totalPax} pax diundang</p>
-                </div>
+                <div><h4 className="font-bold text-sm text-gray-700 group-hover:text-purple-700 transition">Rasio Kehadiran (RSVP)</h4><p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.tamu.hadirPax} pax hadir dari {stats.tamu.totalPax} pax diundang</p></div>
                 <span className="font-extrabold text-purple-700 text-lg">{tamuPct}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${tamuPct}%` }} transition={{ duration: 1, delay: 0.6 }} className="h-full bg-purple-500 rounded-full" />
-              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${tamuPct}%` }} transition={{ duration: 1, delay: 0.6 }} className="h-full bg-purple-500 rounded-full" /></div>
             </div>
           </div>
         </div>
@@ -302,27 +285,15 @@ export default function DashboardPage() {
         {/* Kolom Kanan: Akses Cepat */}
         <div className="space-y-4">
           <div className="bg-gradient-to-br from-[#2C3E50] to-slate-800 rounded-[2rem] p-8 text-white shadow-lg border border-slate-700">
-            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-              <Clock size={24} className="text-blue-300" />
-            </div>
+            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6"><Clock size={24} className="text-blue-300" /></div>
             <h3 className="text-xl font-bold mb-2">Sesuai Jadwal!</h3>
-            <p className="text-sm font-medium text-slate-300 mb-8 leading-relaxed">
-              Persiapan Anda berada di jalur yang tepat. Jangan lupa untuk beristirahat dan menjaga kesehatan menjelang hari H.
-            </p>
-            <Link href="/checklist" className="block w-full bg-white text-slate-900 py-3 rounded-xl text-center text-sm font-bold hover:bg-slate-100 transition shadow-sm">
-              Lanjutkan Checklist
-            </Link>
+            <p className="text-sm font-medium text-slate-300 mb-8 leading-relaxed">Persiapan Anda berada di jalur yang tepat. Jangan lupa untuk beristirahat dan menjaga kesehatan menjelang hari H.</p>
+            <Link href="/checklist" className="block w-full bg-white text-slate-900 py-3 rounded-xl text-center text-sm font-bold hover:bg-slate-100 transition shadow-sm">Lanjutkan Checklist</Link>
           </div>
-
           <Link href="/rundown" className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex items-center justify-between group hover:border-rose-200 transition">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition">
-                <CalendarDays size={18} />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-[#2C3E50]">Cek Jadwal Rundown</h4>
-                <p className="text-[10px] text-gray-400 font-medium">Timeline Persiapan & Hari-H</p>
-              </div>
+              <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition"><CalendarDays size={18} /></div>
+              <div><h4 className="font-bold text-sm text-[#2C3E50]">Cek Jadwal Rundown</h4><p className="text-[10px] text-gray-400 font-medium">Timeline Persiapan & Hari-H</p></div>
             </div>
             <ChevronRight size={20} className="text-gray-300 group-hover:text-rose-600 transition" />
           </Link>
@@ -330,47 +301,123 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* 5. VISUALISASI DATA (PIE CHARTS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+      {/* 5. VISUALISASI DATA (6 PIE CHARTS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
         
-        {/* Pie Chart Seserahan */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center">
-          <h3 className="font-bold text-[#2C3E50] mb-6 flex items-center gap-2"><Gift size={20} className="text-amber-500"/> Status Kelengkapan Seserahan</h3>
-          {stats.seserahan.total === 0 ? (
-            <p className="text-sm text-gray-400 italic py-10">Belum ada data barang seserahan.</p>
+        {/* Chart Checklist */}
+        <div className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm flex flex-col items-center hover:shadow-md transition">
+          <h3 className="font-bold text-[#2C3E50] mb-4 flex items-center gap-2"><ListTodo size={18} className="text-rose-500"/> Checklist Progres</h3>
+          {stats.checklist.total === 0 ? (
+            <p className="text-xs text-gray-400 italic py-10">Belum ada checklist.</p>
           ) : (
-            <div className="w-full h-[250px]">
+            <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataSeserahan} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
-                    {dataSeserahan.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                  <Pie data={dataChecklist} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataChecklist.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} Barang`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  <Tooltip formatter={(value) => [`${value} Tugas`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           )}
         </div>
 
-        {/* Pie Chart Budget Lunas vs Belum */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center">
-          <h3 className="font-bold text-[#2C3E50] mb-6 flex items-center gap-2"><PieChartIcon size={20} className="text-blue-500"/> Status Pelunasan Vendor</h3>
-          {stats.budget.totalItems === 0 ? (
-            <p className="text-sm text-gray-400 italic py-10">Belum ada transaksi vendor tercatat.</p>
+        {/* Chart Dokumen */}
+        <div className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm flex flex-col items-center hover:shadow-md transition">
+          <h3 className="font-bold text-[#2C3E50] mb-4 flex items-center gap-2"><FileText size={18} className="text-emerald-500"/> Kelengkapan Dokumen</h3>
+          {stats.dokumen.total === 0 ? (
+            <p className="text-xs text-gray-400 italic py-10">Belum ada dokumen.</p>
           ) : (
-            <div className="w-full h-[250px]">
+            <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataBudgetLunas} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
-                    {dataBudgetLunas.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                  <Pie data={dataDokumen} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataDokumen.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} Vendor`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  <Tooltip formatter={(value) => [`${value} Berkas`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Chart Tamu RSVP */}
+        <div className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm flex flex-col items-center hover:shadow-md transition">
+          <h3 className="font-bold text-[#2C3E50] mb-4 flex items-center gap-2"><Users size={18} className="text-purple-500"/> Kehadiran Tamu (Pax)</h3>
+          {stats.tamu.totalPax === 0 ? (
+            <p className="text-xs text-gray-400 italic py-10">Belum ada tamu diundang.</p>
+          ) : (
+            <div className="w-full h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataTamu} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataTamu.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} Pax`, 'Kapasitas']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Chart Budget Lunas */}
+        <div className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm flex flex-col items-center hover:shadow-md transition">
+          <h3 className="font-bold text-[#2C3E50] mb-4 flex items-center gap-2"><PieChartIcon size={18} className="text-blue-500"/> Status Pelunasan Vendor</h3>
+          {stats.budget.totalItems === 0 ? (
+            <p className="text-xs text-gray-400 italic py-10">Belum ada data vendor.</p>
+          ) : (
+            <div className="w-full h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataBudgetLunas} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataBudgetLunas.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} Vendor`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Chart Seserahan */}
+        <div className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm flex flex-col items-center hover:shadow-md transition">
+          <h3 className="font-bold text-[#2C3E50] mb-4 flex items-center gap-2"><Gift size={18} className="text-amber-500"/> Pembelian Seserahan</h3>
+          {stats.seserahan.total === 0 ? (
+            <p className="text-xs text-gray-400 italic py-10">Belum ada barang dicatat.</p>
+          ) : (
+            <div className="w-full h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataSeserahan} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataSeserahan.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} Barang`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Chart Prewedding */}
+        <div className="bg-white rounded-[2.5rem] p-6 border border-gray-100 shadow-sm flex flex-col items-center hover:shadow-md transition">
+          <h3 className="font-bold text-[#2C3E50] mb-4 flex items-center gap-2"><Camera size={18} className="text-orange-500"/> Kesiapan Prewedding</h3>
+          {stats.prewedding.total === 0 ? (
+            <p className="text-xs text-gray-400 italic py-10">Belum ada agenda dicatat.</p>
+          ) : (
+            <div className="w-full h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataPrewedding} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataPrewedding.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} Agenda`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -378,7 +425,6 @@ export default function DashboardPage() {
         </div>
 
       </div>
-
     </div>
   );
 }
