@@ -6,10 +6,10 @@ import { LayoutDashboard, BookOpen, CheckSquare, Wallet, Store, Users, Clock, Gi
 
 const menuItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Panduan', path: '/panduan', icon: BookOpen },
+  { name: 'Dokumen', path: '/panduan', icon: BookOpen },
   { name: 'Checklist', path: '/checklist', icon: CheckSquare },
   { name: 'Budget', path: '/budget', icon: Wallet },
-  { name: 'Vendor', path: '/vendor', icon: Store },
+  { name: 'Prewedding', path: '/vendor', icon: Store },
   { name: 'Tamu', path: '/tamu', icon: Users },
   { name: 'Rundown', path: '/rundown', icon: Clock },
   { name: 'Seserahan', path: '/seserahan', icon: Gift },
