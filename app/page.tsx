@@ -105,7 +105,6 @@ export default function DashboardPage() {
   const seserahanPct = getPct(stats.seserahan.done, stats.seserahan.total);
   const tamuPct = getPct(stats.tamu.hadirPax, stats.tamu.totalPax);
 
-  // Warning Logic
   let warningMessage = "Persiapan berjalan lancar! Lanjutkan progres mingguan Anda.";
   let warningType = "safe";
   if (budgetPct > 100) {
@@ -119,7 +118,7 @@ export default function DashboardPage() {
     warningType = "warning";
   }
 
-  // --- DATA UNTUK PIE CHARTS (6 MODUL) ---
+  // --- DATA UNTUK PIE CHARTS FULL BULAT ---
   const dataSeserahan = [
     { name: 'Selesai Dibeli', value: stats.seserahan.done, color: '#10b981' }, 
     { name: 'Belum Selesai', value: stats.seserahan.total - stats.seserahan.done, color: '#f59e0b' },
@@ -131,23 +130,23 @@ export default function DashboardPage() {
   ];
 
   const dataChecklist = [
-    { name: 'Selesai', value: stats.checklist.done, color: '#e11d48' }, // rose-600
-    { name: 'Belum', value: stats.checklist.total - stats.checklist.done, color: '#fda4af' }, // rose-300
+    { name: 'Selesai', value: stats.checklist.done, color: '#e11d48' }, 
+    { name: 'Belum', value: stats.checklist.total - stats.checklist.done, color: '#fda4af' }, 
   ];
 
   const dataDokumen = [
-    { name: 'Berkas Siap', value: stats.dokumen.done, color: '#059669' }, // emerald-600
-    { name: 'Belum Lengkap', value: stats.dokumen.total - stats.dokumen.done, color: '#6ee7b7' }, // emerald-300
+    { name: 'Berkas Siap', value: stats.dokumen.done, color: '#059669' }, 
+    { name: 'Belum Lengkap', value: stats.dokumen.total - stats.dokumen.done, color: '#6ee7b7' }, 
   ];
 
   const dataPrewedding = [
-    { name: 'Agenda Selesai', value: stats.prewedding.done, color: '#ea580c' }, // orange-600
-    { name: 'Proses/Belum', value: stats.prewedding.total - stats.prewedding.done, color: '#fdba74' }, // orange-300
+    { name: 'Agenda Selesai', value: stats.prewedding.done, color: '#ea580c' }, 
+    { name: 'Proses/Belum', value: stats.prewedding.total - stats.prewedding.done, color: '#fdba74' }, 
   ];
 
   const dataTamu = [
-    { name: 'RSVP Hadir', value: stats.tamu.hadirPax, color: '#7c3aed' }, // violet-600
-    { name: 'Belum/Batal', value: stats.tamu.totalPax - stats.tamu.hadirPax, color: '#c4b5fd' }, // violet-300
+    { name: 'RSVP Hadir', value: stats.tamu.hadirPax, color: '#7c3aed' }, 
+    { name: 'Belum/Batal', value: stats.tamu.totalPax - stats.tamu.hadirPax, color: '#c4b5fd' }, 
   ];
 
   return (
@@ -196,7 +195,7 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* 3. TOP METRICS (4 Kotak Cepat) */}
+      {/* 3. TOP METRICS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link href="/budget" className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition group">
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition"><Wallet size={20}/></div>
@@ -301,7 +300,7 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* 5. VISUALISASI DATA (6 PIE CHARTS) */}
+      {/* 5. VISUALISASI DATA (6 PIE CHARTS FULL BULAT) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
         
         {/* Chart Checklist */}
@@ -313,7 +312,8 @@ export default function DashboardPage() {
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataChecklist} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                  {/* outerRadius mengatur besarnya pie. stroke membuat garis potong antar warna */}
+                  <Pie data={dataChecklist} cx="50%" cy="50%" outerRadius={75} dataKey="value" stroke="#ffffff" strokeWidth={2}>
                     {dataChecklist.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                   <Tooltip formatter={(value) => [`${value} Tugas`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
@@ -333,7 +333,7 @@ export default function DashboardPage() {
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataDokumen} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                  <Pie data={dataDokumen} cx="50%" cy="50%" outerRadius={75} dataKey="value" stroke="#ffffff" strokeWidth={2}>
                     {dataDokumen.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                   <Tooltip formatter={(value) => [`${value} Berkas`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
@@ -353,7 +353,7 @@ export default function DashboardPage() {
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataTamu} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                  <Pie data={dataTamu} cx="50%" cy="50%" outerRadius={75} dataKey="value" stroke="#ffffff" strokeWidth={2}>
                     {dataTamu.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                   <Tooltip formatter={(value) => [`${value} Pax`, 'Kapasitas']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
@@ -373,7 +373,7 @@ export default function DashboardPage() {
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataBudgetLunas} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                  <Pie data={dataBudgetLunas} cx="50%" cy="50%" outerRadius={75} dataKey="value" stroke="#ffffff" strokeWidth={2}>
                     {dataBudgetLunas.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                   <Tooltip formatter={(value) => [`${value} Vendor`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
@@ -393,7 +393,7 @@ export default function DashboardPage() {
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataSeserahan} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                  <Pie data={dataSeserahan} cx="50%" cy="50%" outerRadius={75} dataKey="value" stroke="#ffffff" strokeWidth={2}>
                     {dataSeserahan.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                   <Tooltip formatter={(value) => [`${value} Barang`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
@@ -413,7 +413,7 @@ export default function DashboardPage() {
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataPrewedding} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value" stroke="none">
+                  <Pie data={dataPrewedding} cx="50%" cy="50%" outerRadius={75} dataKey="value" stroke="#ffffff" strokeWidth={2}>
                     {dataPrewedding.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                   <Tooltip formatter={(value) => [`${value} Agenda`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
