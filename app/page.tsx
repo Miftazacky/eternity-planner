@@ -3,11 +3,12 @@
 import { motion } from 'framer-motion';
 import { 
   CalendarDays, MapPin, AlertCircle, CheckCircle2, 
-  Wallet, Users, FileText, Camera, Gift, ListTodo, ChevronRight, Clock
+  Wallet, Users, FileText, Camera, Gift, ListTodo, ChevronRight, Clock, PieChart as PieChartIcon
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // --- PENGATURAN DASAR ---
 const WEDDING_DATE = new Date('2027-05-20T08:00:00');
@@ -18,18 +19,16 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [daysLeft, setDaysLeft] = useState(0);
 
-  // State untuk menyimpan agregasi data dari seluruh modul
   const [stats, setStats] = useState({
     checklist: { total: 0, done: 0 },
     dokumen: { total: 0, done: 0 },
-    budget: { pagu: 0, actual: 0 },
+    budget: { pagu: 0, actual: 0, paidItems: 0, totalItems: 0 },
     tamu: { undangan: 0, hadirPax: 0, totalPax: 0 },
     prewedding: { total: 0, done: 0 },
     seserahan: { total: 0, done: 0 }
   });
 
   useEffect(() => {
-    // Hitung Mundur Hari-H
     const today = new Date();
     const diffTime = Math.abs(WEDDING_DATE.getTime() - today.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -40,7 +39,6 @@ export default function DashboardPage() {
 
   const fetchAllData = async () => {
     try {
-      // Jalankan semua query secara paralel agar loading secepat kilat
       const [
         { data: checklist },
         { data: dokumen },
@@ -53,13 +51,12 @@ export default function DashboardPage() {
         supabase.from('checklist').select('is_completed'),
         supabase.from('dokumen').select('is_completed'),
         supabase.from('budget_categories').select('allocated_amount'),
-        supabase.from('expenses').select('actual_cost'),
+        supabase.from('expenses').select('actual_cost, payment_status'),
         supabase.from('tamu').select('status, pax'),
         supabase.from('prewedding').select('status'),
         supabase.from('seserahan_items').select('status')
       ]);
 
-      // Kalkulasi Modul
       const clTotal = checklist?.length || 0;
       const clDone = checklist?.filter(i => i.is_completed).length || 0;
       
@@ -68,6 +65,8 @@ export default function DashboardPage() {
 
       const budPagu = budgetCat?.reduce((sum, item) => sum + (Number(item.allocated_amount) || 0), 0) || 0;
       const budActual = expenses?.reduce((sum, item) => sum + (Number(item.actual_cost) || 0), 0) || 0;
+      const budTotalItems = expenses?.length || 0;
+      const budPaidItems = expenses?.filter(i => i.payment_status === 'Lunas').length || 0;
 
       const tamuUndangan = tamu?.length || 0;
       const tamuTotalPax = tamu?.reduce((sum, item) => sum + (Number(item.pax) || 0), 0) || 0;
@@ -82,14 +81,14 @@ export default function DashboardPage() {
       setStats({
         checklist: { total: clTotal, done: clDone },
         dokumen: { total: docTotal, done: docDone },
-        budget: { pagu: budPagu, actual: budActual },
+        budget: { pagu: budPagu, actual: budActual, paidItems: budPaidItems, totalItems: budTotalItems },
         tamu: { undangan: tamuUndangan, hadirPax: tamuHadir, totalPax: tamuTotalPax },
         prewedding: { total: prewedTotal, done: prewedDone },
         seserahan: { total: srTotal, done: srDone }
       });
 
     } catch (error) {
-      console.error("Gagal memuat data dashboard:", error);
+      console.error("Gagal memuat data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +96,6 @@ export default function DashboardPage() {
 
   if (isLoading) return <div className="flex justify-center pt-20 text-gray-400">Menyinkronkan Data Command Center...</div>;
 
-  // Persentase Kalkulasi
   const getPct = (done: number, total: number) => total > 0 ? Math.round((done / total) * 100) : 0;
   
   const checklistPct = getPct(stats.checklist.done, stats.checklist.total);
@@ -107,10 +105,9 @@ export default function DashboardPage() {
   const seserahanPct = getPct(stats.seserahan.done, stats.seserahan.total);
   const tamuPct = getPct(stats.tamu.hadirPax, stats.tamu.totalPax);
 
-  // Logika Peringatan (Warning Logic)
+  // Warning Logic
   let warningMessage = "Persiapan berjalan lancar! Lanjutkan progres mingguan Anda.";
-  let warningType = "safe"; // safe, warning, danger
-  
+  let warningType = "safe";
   if (budgetPct > 100) {
     warningMessage = "Over-budget Terdeteksi! Pengeluaran aktual Anda melebihi pagu target.";
     warningType = "danger";
@@ -122,10 +119,22 @@ export default function DashboardPage() {
     warningType = "warning";
   }
 
+  // Data untuk Pie Chart Seserahan
+  const dataSeserahan = [
+    { name: 'Selesai Dibeli', value: stats.seserahan.done, color: '#10b981' }, // emerald-500
+    { name: 'Belum Selesai', value: stats.seserahan.total - stats.seserahan.done, color: '#f59e0b' }, // amber-500
+  ];
+
+  // Data untuk Pie Chart Lunas Budget
+  const dataBudgetLunas = [
+    { name: 'Vendor Lunas', value: stats.budget.paidItems, color: '#3b82f6' }, // blue-500
+    { name: 'Belum Lunas/DP', value: stats.budget.totalItems - stats.budget.paidItems, color: '#ef4444' }, // red-500
+  ];
+
   return (
     <div className="pb-20 max-w-6xl mx-auto space-y-8">
       
-      {/* 1. HERO BANNER (Super Aesthetic) */}
+      {/* 1. HERO BANNER */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-rose-900 via-rose-950 to-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl shadow-rose-900/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8"
@@ -182,13 +191,13 @@ export default function DashboardPage() {
           <p className="text-xl md:text-2xl font-extrabold text-[#2C3E50]">{stats.tamu.hadirPax} <span className="text-sm">Pax</span></p>
           <p className="text-[10px] font-bold text-gray-400 mt-1">Dari Total {stats.tamu.totalPax} Kapasitas</p>
         </Link>
-        <Link href="/panduan" className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition group">
+        <Link href="/dokumen" className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition group">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition"><FileText size={20}/></div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Berkas Dokumen</p>
           <p className="text-xl md:text-2xl font-extrabold text-[#2C3E50]">{stats.dokumen.done} <span className="text-sm text-gray-400">/ {stats.dokumen.total}</span></p>
           <p className="text-[10px] font-bold text-gray-400 mt-1">Syarat Terpenuhi</p>
         </Link>
-        <Link href="/vendor" className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition group">
+        <Link href="/prewedding" className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition group">
           <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-4 group-hover:scale-110 transition"><Camera size={20}/></div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Prewedding</p>
           <p className="text-xl md:text-2xl font-extrabold text-[#2C3E50]">{stats.prewedding.done} <span className="text-sm text-gray-400">/ {stats.prewedding.total}</span></p>
@@ -196,10 +205,10 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* 4. DETAIL PROGRES (Kiri & Kanan) */}
+      {/* 4. DETAIL PROGRES BAR & WIDGET SAMPING */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Kolom Kiri: Progress Tracker Besar */}
+        {/* Kolom Kiri: Progress Tracker Besar (Sekarang dengan Dokumen & Prewed) */}
         <div className="md:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
           <h2 className="text-xl font-bold text-[#2C3E50] mb-8 flex items-center gap-2"><ListTodo size={24} className="text-rose-900" /> Progres Utama Persiapan</h2>
           
@@ -214,7 +223,35 @@ export default function DashboardPage() {
                 <span className="font-extrabold text-rose-700 text-lg">{checklistPct}%</span>
               </div>
               <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${checklistPct}%` }} transition={{ duration: 1, delay: 0.2 }} className="h-full bg-rose-500 rounded-full" />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${checklistPct}%` }} transition={{ duration: 1, delay: 0.1 }} className="h-full bg-rose-500 rounded-full" />
+              </div>
+            </div>
+
+            {/* Dokumen Legal */}
+            <div className="group">
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-emerald-700 transition">Dokumen Administratif</h4>
+                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.dokumen.done} dari {stats.dokumen.total} berkas siap</p>
+                </div>
+                <span className="font-extrabold text-emerald-700 text-lg">{dokumenPct}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${dokumenPct}%` }} transition={{ duration: 1, delay: 0.2 }} className="h-full bg-emerald-500 rounded-full" />
+              </div>
+            </div>
+
+            {/* Prewedding */}
+            <div className="group">
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <h4 className="font-bold text-sm text-gray-700 group-hover:text-orange-700 transition">Kesiapan Prewedding</h4>
+                  <p className="text-[10px] font-medium text-gray-400 mt-0.5">{stats.prewedding.done} dari {stats.prewedding.total} persiapan selesai</p>
+                </div>
+                <span className="font-extrabold text-orange-700 text-lg">{prewedPct}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${prewedPct}%` }} transition={{ duration: 1, delay: 0.3 }} className="h-full bg-orange-500 rounded-full" />
               </div>
             </div>
 
@@ -228,7 +265,7 @@ export default function DashboardPage() {
                 <span className={`font-extrabold text-lg ${budgetPct > 100 ? 'text-rose-600' : 'text-blue-700'}`}>{budgetPct}%</span>
               </div>
               <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${budgetPct > 100 ? 100 : budgetPct}%` }} transition={{ duration: 1, delay: 0.3 }} className={`h-full rounded-full ${budgetPct > 100 ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${budgetPct > 100 ? 100 : budgetPct}%` }} transition={{ duration: 1, delay: 0.4 }} className={`h-full rounded-full ${budgetPct > 100 ? 'bg-rose-500' : 'bg-blue-500'}`} />
               </div>
             </div>
 
@@ -242,7 +279,7 @@ export default function DashboardPage() {
                 <span className="font-extrabold text-amber-700 text-lg">{seserahanPct}%</span>
               </div>
               <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${seserahanPct}%` }} transition={{ duration: 1, delay: 0.4 }} className="h-full bg-amber-500 rounded-full" />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${seserahanPct}%` }} transition={{ duration: 1, delay: 0.5 }} className="h-full bg-amber-500 rounded-full" />
               </div>
             </div>
             
@@ -256,7 +293,7 @@ export default function DashboardPage() {
                 <span className="font-extrabold text-purple-700 text-lg">{tamuPct}%</span>
               </div>
               <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${tamuPct}%` }} transition={{ duration: 1, delay: 0.5 }} className="h-full bg-purple-500 rounded-full" />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${tamuPct}%` }} transition={{ duration: 1, delay: 0.6 }} className="h-full bg-purple-500 rounded-full" />
               </div>
             </div>
           </div>
@@ -292,6 +329,56 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* 5. VISUALISASI DATA (PIE CHARTS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+        
+        {/* Pie Chart Seserahan */}
+        <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center">
+          <h3 className="font-bold text-[#2C3E50] mb-6 flex items-center gap-2"><Gift size={20} className="text-amber-500"/> Status Kelengkapan Seserahan</h3>
+          {stats.seserahan.total === 0 ? (
+            <p className="text-sm text-gray-400 italic py-10">Belum ada data barang seserahan.</p>
+          ) : (
+            <div className="w-full h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataSeserahan} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataSeserahan.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} Barang`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Pie Chart Budget Lunas vs Belum */}
+        <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center">
+          <h3 className="font-bold text-[#2C3E50] mb-6 flex items-center gap-2"><PieChartIcon size={20} className="text-blue-500"/> Status Pelunasan Vendor</h3>
+          {stats.budget.totalItems === 0 ? (
+            <p className="text-sm text-gray-400 italic py-10">Belum ada transaksi vendor tercatat.</p>
+          ) : (
+            <div className="w-full h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataBudgetLunas} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
+                    {dataBudgetLunas.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} Vendor`, 'Jumlah']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+      </div>
+
     </div>
   );
 }
